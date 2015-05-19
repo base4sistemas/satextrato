@@ -60,12 +60,12 @@ class ParametrosQRCode(object):
 
 class NotaRodape(object):
 
-    esquerda = 'Python SAT-CF-e'
+    esquerda = 'Extrato SAT-CF-e'
     """
     Texto alinha à borda esquerda da bobina.
     """
 
-    direita = 'http://git.io/xyz'
+    direita = 'http://git.io/vJRRk'
     """
     Texto alinhado à borda direita da bobina.
 
