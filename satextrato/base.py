@@ -18,6 +18,7 @@
 #
 
 import textwrap
+import warnings
 
 from unidecode import unidecode
 
@@ -25,6 +26,7 @@ import escpos.barcode
 import escpos.feature
 
 from satcomum import br
+from satcomum import constantes
 from satcomum import util
 
 from .config import conf
@@ -61,6 +63,7 @@ class ExtratoCFe(object):
         self.impressora = impressora
 
         self._flag_negrito = False
+        self._flag_italico = False
         self._flag_expandido = False
         self._flag_condensado= False
 
@@ -94,14 +97,24 @@ class ExtratoCFe(object):
     def normal(self):
         if self._flag_negrito:
             self.negrito()
+        if self._flag_italico:
+            self.italico()
         if self._flag_expandido:
             self.expandido()
         if self._flag_condensado:
             self.condensado()
 
+
     def negrito(self):
         self._flag_negrito = not self._flag_negrito
         self.impressora.set_emphasized(self._flag_negrito)
+        return self
+
+
+    def italico(self):
+        warnings.warn('Estilo "italico" ainda nao disponivel via PyESCPOS',
+                stacklevel=2)
+        self._flag_italico = not self._flag_italico
         return self
 
 
@@ -153,6 +166,66 @@ class ExtratoCFe(object):
         largura = colunas or self._colunas
         self.texto('-' * largura)
         return self
+
+
+    def em_condicao_de_teste(self):
+        """
+        Identifica se o CF-e de venda/cancelamento está em "condição de teste".
+
+        O Manual de Orientação não é claro quanto o que significa "estar em
+        condição de teste". Este método irá assumir "condição de teste" quando a
+        assinatura (B11) possuir a assinatura de teste, indicada pela constante
+        :attr:`satcomum.constantes.ASSINATURA_AC_TESTE`.
+        """
+        return self.xml.text('infCFe/ide/signAC') == \
+                constantes.ASSINATURA_AC_TESTE
+
+
+    def indicacao_de_teste(self):
+        """
+        Imprime a indicação de teste se o CF-e estiver em "condição de teste".
+        Caso contrário, não faz nada. A indicação de teste, conforme o Manual de
+        Orientação deverá ser impressa em itálico (note a linha em branco acima
+        e abaixo da inscrição "TESTE"):
+
+        .. sourcecode:: text
+
+                    10        20        30        40      48 :
+            ....:....|....:....|....:....|....:....|....:..! :
+                                                             :
+                             = T E S T E =                   :
+                                                             :
+            <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< :
+            <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< :
+            <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< :
+
+        .. note::
+
+            O correto são linhas com sinais de ``>``, mas isso faz com que o
+            framework de teste interprete como um bloco de teste (doctest). Os
+            sinais de ``<`` dão uma boa ideia do resultado final.
+
+        """
+        if self.em_condicao_de_teste():
+            self.italico()
+            self.avanco()
+            self.texto('= T E S T E =')
+            self.avanco()
+            for i in xrange(3):
+                self.texto('>' * conf.colunas.normal)
+            self.italico()
+
+
+    def numero_extrato(self):
+        """
+        Obtém o número do extrato, elemento ``nCFe`` (B06). Se o CF-e estiver
+        em condição de teste retornará ``000000``.
+
+        Veja :meth:`em_condicao_de_teste` para outros detalhes.
+        """
+        if self.em_condicao_de_teste():
+            return '0' * 6
+        return self.xml.text('infCFe/ide/nCFe')
 
 
     def chave_cfe_code128(self, chave):

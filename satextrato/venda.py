@@ -53,7 +53,7 @@ class ExtratoCFeVenda(ExtratoCFe):
 
         .. sourcecode:: text
 
-                    10         20        30        40      48:
+                    10        20        30        40      48 :
             ....:....|....:....|....:....|....:....|....:..! :
             001 7891234567891 PELLENTESQUE HABITANT MORBI    :
             TRISTIQUE SENECTUS ET NETUS ET MALESUADA FAMES   :
@@ -65,7 +65,7 @@ class ExtratoCFeVenda(ExtratoCFe):
 
         .. sourcecode:: text
 
-                    10         20        30        40      48:
+                    10        20        30        40      48 :
             ....:....|....:....|....:....|....:....|....:..! :
             001 7891234567891 AB                             :
                                    1 UN x 12,75 (0,30) 12,75 :
@@ -160,8 +160,9 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.normal()
         self.centro()
         self.negrito()
-        self.texto('Extrato No. {}'.format(self.xml.text('infCFe/ide/cNF')))
+        self.texto('Extrato No. {}'.format(self.numero_extrato()))
         self.texto(u'CUPOM FISCAL ELETRÔNICO - SAT')
+        self.indicacao_de_teste()
         self.negrito()
         self.esquerda()
         self.separador()
