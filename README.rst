@@ -37,6 +37,8 @@ Esta implementação é baseada na emissão dos extratos para mini-impressoras,
 normalmente térmicas (mas não limitado à elas), através da abstração
 `PyESCPOS`_ para o sistema de comandos de impressão ESC/POS |reg| e derivações.
 
+Para comunicar-se com equipamentos SAT veja o projeto `satcfe`_.
+
 
 Extratos do CF-e de Venda
 -------------------------
@@ -135,4 +137,5 @@ AC
 .. _`CF-e-SAT`: http://www.fazenda.sp.gov.br/sat/
 .. _`SAT-CF-e`: http://www.fazenda.sp.gov.br/sat/
 .. _`PyESCPOS`: https://github.com/base4sistemas/pyescpos
+.. _`satcfe`: https://github.com/base4sistemas/satcfe
 .. _`XML`: http://www.w3.org/XML/
