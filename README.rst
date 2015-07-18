@@ -37,7 +37,11 @@ Esta implementação é baseada na emissão dos extratos para mini-impressoras,
 normalmente térmicas (mas não limitado à elas), através da abstração
 `PyESCPOS`_ para o sistema de comandos de impressão ESC/POS |reg| e derivações.
 
-Para comunicar-se com equipamentos SAT veja o projeto `satcfe`_.
+Para comunicar-se com equipamentos SAT veja o `Projeto SATCFe`_.
+
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+   :alt: Join the chat at https://gitter.im/base4sistemas/satcfe
+   :target: https://gitter.im/base4sistemas/satcfe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 
 
 Extratos do CF-e de Venda
@@ -94,35 +98,6 @@ seriais:
             "--escpos-if=serial "\
             "--serial-port=/dev/ttyS7"
 
-Glossário
-=========
-
-Alguns termos são confusos e parecem dizer mesma coisa quando, na verdade,
-são coisas completamente diferentes. Este pequeno glossário pode ajudar a
-desfazer certas confusões.
-
-CF-e
-    Cupom Fiscal eletrônico, um documento em formato XML que descreve uma
-    transação de venda ao consumidor ou o cancelamento de uma venda anterior.
-
-SAT-CF-e
-    Diz respeito à tecnologia SAT-Fiscal e toda a infraestrutura física e
-    lógica usada na transmissão de documentos fiscais (CF-e) de venda e/ou
-    cancelamento.
-
-CF-e-SAT
-    Refere-se ao CF-e que transitou através do SAT-CF-e.
-
-Outros dois termos muito parecidos, mas são coisas totalmente diferentes:
-
-AC-SAT
-    Refere-se à **Autoridade Certificadora** que gerencia (emite e revoga)
-    certificados digitais de equipamentos SAT.
-
-AC
-    Refere-se ao **Aplicativo Comercial** (a.k.a. Automação Comercial).
-
-
 ..
     Sphinx Documentation: Substitutions at
     http://sphinx-doc.org/rest.html#substitutions
@@ -137,5 +112,5 @@ AC
 .. _`CF-e-SAT`: http://www.fazenda.sp.gov.br/sat/
 .. _`SAT-CF-e`: http://www.fazenda.sp.gov.br/sat/
 .. _`PyESCPOS`: https://github.com/base4sistemas/pyescpos
-.. _`satcfe`: https://github.com/base4sistemas/satcfe
+.. _`Projeto SATCFe`: https://github.com/base4sistemas/satcfe
 .. _`XML`: http://www.w3.org/XML/

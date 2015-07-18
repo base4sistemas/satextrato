@@ -17,10 +17,12 @@
 # limitations under the License.
 #
 
-__version__ = '0.0.4'
+import os
 
-from .config import ConfiguracoesExtrato
-from .config import conf
-from .venda import ExtratoCFeVenda
-from .cancelamento import ExtratoCFeCancelamento
+__version__ = '0.0.5'
 
+if 'SATEXTRATO_SETUP_SCRIPT' not in os.environ:
+    from .config import ConfiguracoesExtrato
+    from .config import conf
+    from .venda import ExtratoCFeVenda
+    from .cancelamento import ExtratoCFeCancelamento

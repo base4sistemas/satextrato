@@ -195,7 +195,7 @@ class ExtratoCFeVenda(ExtratoCFe):
     def corpo_III_legenda(self):
         legendas = ' | '.join([
                 '#', 'COD', 'DESC', 'QTD', 'UN',
-                'VL UN R$', '(VL TR R$)', 'VL ITEM R$',])
+                'VL UN R$', '(VL TR R$)*', 'VL ITEM R$',])
 
         self.normal()
         self.condensado()

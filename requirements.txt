@@ -1,0 +1,3 @@
+unidecode >= 0.4.17
+PyESCPOS >= 0.0.2
+satcomum >= 0.0.1

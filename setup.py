@@ -18,10 +18,15 @@
 #
 
 import io
+import os
 import sys
 
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
+
+# Isso evita que o pacote 'satextrato' importe outros módulos prematuramente,
+# quebrando a resolução de dependências durante a instalação via PIP
+os.environ['SATEXTRATO_SETUP_SCRIPT'] = '1'
 
 import satextrato
 
@@ -36,7 +41,12 @@ def read(*filenames, **kwargs):
     return sep.join(buf)
 
 
-long_description = read('README.rst', 'CHANGES.rst')
+def read_install_requires():
+    content = read('requirements.txt')
+    return content.strip().split(os.linesep)
+
+
+long_description = read('README.rst')
 
 
 class PyTest(TestCommand):
@@ -60,14 +70,10 @@ class PyTest(TestCommand):
 setup(
         name='satextrato',
         version=satextrato.__version__,
-        description=u'Impressão de Extratos do CF-e-SAT (SAT Fiscal).',
+        description=u'Impressão dos Extratos do CF-e-SAT',
         long_description=long_description,
         packages=['satextrato'],
-        install_requires=[
-                'unidecode >= 0.4.17',
-                'PyESCPOS >= 0.0.2',
-                'satcomum >= 0.0.1',
-            ],
+        install_requires=read_install_requires(),
         extras_require={
                 'testing': [
                         'pytest',

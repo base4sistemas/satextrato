@@ -21,13 +21,13 @@ import sys
 
 import pytest
 
-from satextrato import ExtratoCFeVenda
-from satextrato import ExtratoCFeCancelamento
+from satextrato.venda import ExtratoCFeVenda
+from satextrato.cancelamento import ExtratoCFeCancelamento
 
 
 def test_extrato_venda_simples(
         xml_venda,
-        escpos_impl, 
+        escpos_impl,
         escpos_interface):
     impl = escpos_impl(escpos_interface)
     extrato = ExtratoCFeVenda(xml_venda, impl)
@@ -35,7 +35,7 @@ def test_extrato_venda_simples(
 
 
 def test_extrato_cancelamento_simples(
-        xml_cancelamento, 
+        xml_cancelamento,
         xml_venda,
         escpos_impl,
         escpos_interface):
