@@ -19,7 +19,7 @@
 
 import os
 
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 
 if 'SATEXTRATO_SETUP_SCRIPT' not in os.environ:
     from .config import ConfiguracoesExtrato

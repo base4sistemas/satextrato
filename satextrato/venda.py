@@ -82,20 +82,20 @@ class ExtratoCFeVenda(ExtratoCFe):
         nItem = int(item.root_attr('nItem'))
         cProd = item.text('prod/cProd')
         xProd = item.text('prod/xProd')
-        qCom = item.decimal('prod/qCom').normalize()
+        qCom = item.decimal('prod/qCom')
         uCom = item.text('prod/uCom')
         vUnCom = item.decimal('prod/vUnCom')
         vProd = item.decimal('prod/vProd')
         vItem12741 = item.decimal('imposto/vItem12741', default=ZERO)
 
         if vItem12741.is_zero():
-            detalhe = u'{:n} {:s} x {:n} {:n}'.format(
-                    qCom, uCom, vUnCom, vProd)
+            detalhe = u'{:s} {:s} x {:n} {:n}'.format(
+                    util.texto_decimal(qCom), uCom, vUnCom, vProd)
         else:
-            detalhe = u'{:n} {:s} x {:n} ({:n}) {:n}'.format(
-                    qCom, uCom, vUnCom, vItem12741, vProd)
+            detalhe = u'{:s} {:s} x {:n} ({:n}) {:n}'.format(
+                    util.texto_decimal(qCom), uCom, vUnCom, vItem12741, vProd)
 
-        texto = u'{0:03d} {1:s} {2:s}'.format(nItem, cProd, xProd)
+        texto_item = u'{0:03d} {1:s} {2:s}'.format(nItem, cProd, xProd)
 
         self.normal()
         self.esquerda()
@@ -104,7 +104,7 @@ class ExtratoCFeVenda(ExtratoCFe):
             self.condensado() # liga
 
         largura = self._colunas
-        linhas = textwrap.wrap(texto, largura)
+        linhas = textwrap.wrap(texto_item, largura)
 
         ultima_linha = linhas[-1]
 
@@ -312,12 +312,12 @@ class ExtratoCFeVenda(ExtratoCFe):
         if ha_acres_itens:
             # há acréscimo sobre itens
             self.bordas(u'Total de acréscimos sobre item',
-                    '- {:n}'.format(total_acres))
+                    '+ {:n}'.format(total_acres))
 
         if ha_acres_subtotal:
             # há acréscimo sobre o subtotal
             self.bordas(u'Acréscimo sobre subtotal',
-                    '- {:n}'.format(vAcresSubtot))
+                    '+ {:n}'.format(vAcresSubtot))
 
         vCFe = self.xml.decimal('infCFe/total/vCFe')
 
