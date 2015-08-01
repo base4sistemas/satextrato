@@ -37,8 +37,9 @@ class ExtratoCFeVenda(ExtratoCFe):
     anotacoes_corpo = None
 
 
-    def __init__(self, xmlstr, impressora):
+    def __init__(self, xmlstr, impressora, resumido=False):
         super(ExtratoCFeVenda, self).__init__(xmlstr, impressora)
+        self._resumido = resumido
         self.anotacoes_antes_obs_contribuinte = []
         self.anotacoes_corpo = []
 
@@ -129,8 +130,9 @@ class ExtratoCFeVenda(ExtratoCFe):
     def corpo(self):
         self.corpo_I_titulo()
         self.corpo_II_consumidor()
-        self.corpo_III_legenda()
-        self.corpo_IV_itens()
+        if not self._resumido:
+            self.corpo_III_legenda()
+            self.corpo_IV_itens()
         self.corpo_V_total_cupom()
         self.corpo_VI_meio_pagamento()
         self.corpo_VII_observacoes_fisco()

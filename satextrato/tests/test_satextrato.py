@@ -42,3 +42,21 @@ def test_extrato_cancelamento_simples(
     impl = escpos_impl(escpos_interface)
     extrato = ExtratoCFeCancelamento(xml_cancelamento, xml_venda, impl)
     extrato.imprimir()
+
+
+def test_extrato_venda_complexo(
+        xml_venda_complexo,
+        escpos_impl,
+        escpos_interface):
+    impl = escpos_impl(escpos_interface)
+    extrato = ExtratoCFeVenda(xml_venda_complexo, impl)
+    extrato.imprimir()
+
+
+def test_extrato_venda_complexo_resumido(
+        xml_venda_complexo,
+        escpos_impl,
+        escpos_interface):
+    impl = escpos_impl(escpos_interface)
+    extrato = ExtratoCFeVenda(xml_venda_complexo, impl, resumido=True)
+    extrato.imprimir()
