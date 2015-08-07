@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+import io
 import sys
 
 import pytest
@@ -25,38 +26,33 @@ from satextrato.venda import ExtratoCFeVenda
 from satextrato.cancelamento import ExtratoCFeCancelamento
 
 
-def test_extrato_venda_simples(
+def test_extrato_venda(
         xml_venda,
         escpos_impl,
         escpos_interface):
+    stream = io.StringIO(xml_venda)
     impl = escpos_impl(escpos_interface)
-    extrato = ExtratoCFeVenda(xml_venda, impl)
+    extrato = ExtratoCFeVenda(stream, impl)
     extrato.imprimir()
 
 
-def test_extrato_cancelamento_simples(
+def test_extrato_venda_resumido(
+        xml_venda,
+        escpos_impl,
+        escpos_interface):
+    stream = io.StringIO(xml_venda)
+    impl = escpos_impl(escpos_interface)
+    extrato = ExtratoCFeVenda(stream, impl, resumido=True)
+    extrato.imprimir()
+
+
+def test_extrato_cancelamento(
+        xml_venda,
         xml_cancelamento,
-        xml_venda,
         escpos_impl,
         escpos_interface):
+    stream_venda = io.StringIO(xml_venda)
+    stream_canc = io.StringIO(xml_cancelamento)
     impl = escpos_impl(escpos_interface)
-    extrato = ExtratoCFeCancelamento(xml_cancelamento, xml_venda, impl)
-    extrato.imprimir()
-
-
-def test_extrato_venda_complexo(
-        xml_venda_complexo,
-        escpos_impl,
-        escpos_interface):
-    impl = escpos_impl(escpos_interface)
-    extrato = ExtratoCFeVenda(xml_venda_complexo, impl)
-    extrato.imprimir()
-
-
-def test_extrato_venda_complexo_resumido(
-        xml_venda_complexo,
-        escpos_impl,
-        escpos_interface):
-    impl = escpos_impl(escpos_interface)
-    extrato = ExtratoCFeVenda(xml_venda_complexo, impl, resumido=True)
+    extrato = ExtratoCFeCancelamento(stream_venda, stream_canc, impl)
     extrato.imprimir()

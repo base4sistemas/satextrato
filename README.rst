@@ -62,26 +62,24 @@ projeto `PyESCPOS`_):
     impressora = DR700(conn)
     impressora.init()
 
-    # carrega o conteúdo do XML do CF-e de venda
-    with open(r'C:\CFe545090.xml', 'r') as f:
-        xml = f.read()
-
-    # emite o extrato
-    extrato = ExtratoCFeVenda(xml, impressora)
-    extrato.imprimir()
+    # abre o arquivo do CF-e e emite o extrato
+    with open(r'C:\CFe545090.xml', 'r') as fp:
+        extrato = ExtratoCFeVenda(fp, impressora)
+        extrato.imprimir()
 
 
 Extratos do CF-e de Cancelamento
 --------------------------------
 
-Para emitir um extrato do CF-e de cancelamento, além do XML do CF-e de
-cancelamento, você também irá precisar do XML do CF-e de venda que foi
-cancelado. Seguindo a mesma linha do exemplo anterior:
+Para emitir um extrato do CF-e de cancelamento, além do do CF-e de cancelamento,
+você também irá precisar do do CF-e de venda que fora cancelado. Seguindo a
+mesma linha do exemplo anterior:
 
 .. sourcecode:: python
 
-    extrato = ExtratoCFeCancelamento(xml_canc, xml_venda, impressora)
-    extrato.imprimir()
+    with open('CFe_1.xml', 'r') as fvenda, open('CFeCanc_1.xml', 'r') as fcanc:
+        extrato = ExtratoCFeCancelamento(fvenda, fcanc, impressora)
+        extrato.imprimir()
 
 
 Executando Testes

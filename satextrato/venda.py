@@ -20,6 +20,7 @@
 import textwrap
 
 from datetime import datetime
+from decimal import Decimal
 
 from satcomum import br
 from satcomum import util
@@ -31,22 +32,25 @@ from .base import ExtratoCFe
 
 
 class ExtratoCFeVenda(ExtratoCFe):
-
-    anotacoes_antes_obs_contribuinte = None
-
-    anotacoes_corpo = None
+    """Implementa impressão do extrato do CF-e de venda, normal e resumido."""
 
 
-    def __init__(self, xmlstr, impressora, resumido=False):
-        super(ExtratoCFeVenda, self).__init__(xmlstr, impressora)
+    def __init__(self, fp, impressora, resumido=False):
+        """Inicia uma instância de :class:`ExtratoCFeVenda`.
+
+        :param fp: Um objeto *file-like* para o XML que contém o CF-e de venda.
+        :param impressora: Um objeto :class:`escpos.impl.epson.GenericESCPOS`
+            ou especialização.
+
+        """
+        super(ExtratoCFeVenda, self).__init__(fp, impressora)
         self._resumido = resumido
         self.anotacoes_antes_obs_contribuinte = []
         self.anotacoes_corpo = []
 
 
-    def apresentar_item(self, item):
-        """
-        Apresenta um item (produto/serviço) do CF-e.
+    def apresentar_item(self, det):
+        """Apresenta um item (produto/serviço) do CF-e.
 
         Nesta abordagem, os detalhes do item utilizam uma linha exclusiva,
         abaixo das linhas que mostram o número do item, código e descrição.
@@ -79,15 +83,21 @@ class ExtratoCFeVenda(ExtratoCFe):
         linha tentando "encaixar" o detalhamento do item na mesma linha de
         descrição, desde que caiba. Isso pode ser mais comum, se estiver
         configurado para apresentar os itens em modo condensado (padrão).
+
+        :param det: O n-ésimo elemento ``/CFe/infCFe/det`` (produto ou serviço)
+            existente no corpo do CF-e de venda.
+
         """
-        nItem = int(item.root_attr('nItem'))
-        cProd = item.text('prod/cProd')
-        xProd = item.text('prod/xProd')
-        qCom = item.decimal('prod/qCom')
-        uCom = item.text('prod/uCom')
-        vUnCom = item.decimal('prod/vUnCom')
-        vProd = item.decimal('prod/vProd')
-        vItem12741 = item.decimal('imposto/vItem12741', default=ZERO)
+        nItem = int(det.attrib['nItem'])
+        prod, imposto = det.find('prod'), det.find('imposto')
+
+        cProd = prod.findtext('cProd')
+        xProd = prod.findtext('xProd')
+        uCom = prod.findtext('uCom')
+        qCom = Decimal(prod.findtext('qCom'))
+        vUnCom = Decimal(prod.findtext('vUnCom'))
+        vProd = Decimal(prod.findtext('vProd'))
+        vItem12741 = Decimal(det.findtext('imposto/vItem12741') or 0)
 
         if vItem12741.is_zero():
             detalhe = u'{:s} {:s} x {:n} {:n}'.format(
@@ -178,9 +188,8 @@ class ExtratoCFeVenda(ExtratoCFe):
         #     Como havia implementado originalmente com o nome, apenas
         #     deixei configurável a apresentação do nome do consumidor.
         #
-        nome = self.xml.text('infCFe/dest/xNome', default='')
-        documento = self.xml.text('infCFe/dest/CPF',
-            alternative_xpath='infCFe/dest/CNPJ', default='')
+        documento = self.root.findtext('./infCFe/dest/CNPJ') or \
+                self.root.findtext('./infCFe/dest/CPF') or ''
 
         if br.is_cnpjcpf(documento):
             self.normal()
@@ -188,6 +197,7 @@ class ExtratoCFeVenda(ExtratoCFe):
             self.texto('CPF/CNPJ do Consumidor: {}'.format(
                     br.as_cnpjcpf(documento)))
 
+            nome = self.root.findtext('./infCFe/dest/xNome')
             if nome and conf.exibir_nome_consumidor:
                 self.quebrar(nome)
 
@@ -211,14 +221,17 @@ class ExtratoCFeVenda(ExtratoCFe):
 
     def corpo_IV_itens(self):
 
-        for item in self.xml.iterate('infCFe/det'):
-            self.apresentar_item(item)
+        for det in self.root.findall('./infCFe/det'):
+            self.apresentar_item(det)
 
-            vProd = item.decimal('prod/vProd')
-            vDesc = item.decimal('prod/vDesc', default=ZERO)
-            vRatDesc = item.decimal('prod/vRatDesc', default=ZERO)
-            vOutro = item.decimal('prod/vOutro', default=ZERO)
-            vRatAcr = item.decimal('prod/vRatAcr', default=ZERO)
+            prod = det.find('prod')
+            imposto = det.find('imposto')
+
+            vProd = Decimal(prod.findtext('vProd'))
+            vDesc = Decimal(prod.findtext('vDesc') or 0)
+            vRatDesc = Decimal(prod.findtext('vRatDesc') or 0)
+            vOutro = Decimal(prod.findtext('vOutro') or 0)
+            vRatAcr = Decimal(prod.findtext('vRatAcr') or 0)
 
             # (!) Do modo como está implementado, descontos e acréscimos
             # serão ambos tratados como se pudessem coexistir, embora o
@@ -240,13 +253,10 @@ class ExtratoCFeVenda(ExtratoCFe):
                 self.bordas(u'rateio de acréscimo sobre subtotal',
                         '+ {:n}'.format(vRatAcr))
 
-            # item tributado pelo ISSQN?
-            if item.text('imposto/ISSQN/cNatOp', default='@') != '@':
-                # o campo cNatOp (U09) retornou algo diferente do valor default
-                # indicado; logo, assume que o item foi tributado pelo ISSQN...
-                vBC = item.decimal('imposto/ISSQN/vBC', default=ZERO)
-                vDeducISSQN = item.decimal('imposto/ISSQN/vDeducISSQN',
-                        default=ZERO)
+            if imposto.find('ISSQN/cNatOp') is not None:
+                # se cNatOp (U09) presente, assume item tributado pelo ISSQN
+                vBC = Decimal(imposto.findtext('ISSQN/vBC') or 0)
+                vDeducISSQN = Decimal(imposto.findtext('ISSQN/vDeducISSQN') or 0)
 
                 if not vDeducISSQN.is_zero():
                     self.bordas(u'dedução para ISSQN',
@@ -257,33 +267,31 @@ class ExtratoCFeVenda(ExtratoCFe):
 
     def corpo_V_total_cupom(self):
 
+        total = self.root.find('./infCFe/total')
+
         # calcula o total de descontos apenas dos itens tributados por ISSQN,
         # usando os campos vDesc (I12) e vOutro (I13);
         issqn_total_desc = ZERO
         issqn_total_acres = ZERO
 
-        for item in self.xml.iterate('infCFe/det'):
-            # item tributado pelo ISSQN?
-            if item.text('imposto/ISSQN/cNatOp', default='@') != '@':
-                # o campo cNatOp (U09) retornou algo diferente do valor default
-                # indicado; logo, assume que o item foi tributado pelo ISSQN...
-                issqn_total_desc += item.decimal('prod/vDesc', default=ZERO)
-                issqn_total_acres += item.decimal('prod/vOutro', default=ZERO)
+        for det in self.root.findall('./infCFe/det'):
+            if det.find('imposto/ISSQN/cNatOp') is not None:
+                # se cNatOp (U09) presente, assume item tributado pelo ISSQN
+                issqn_total_desc += Decimal(det.findtext('prod/vDesc') or 0)
+                issqn_total_acres += Decimal(det.findtext('prod/vOutro') or 0)
 
         # total de descontos sobre itens (vDesc, W05);
         # total de outras despesas acessórias sobre itens (vOutro W10);
-        total_desc = self.xml.decimal(
-                'infCFe/total/ICMSTot/vDesc', default=ZERO) + issqn_total_desc
+        total_desc = issqn_total_desc + \
+                Decimal(total.findtext('ICMSTot/vDesc') or 0)
 
-        total_acres = self.xml.decimal(
-                'infCFe/total/ICMSTot/vOutro', default=ZERO) + issqn_total_acres
+        total_acres = issqn_total_acres + \
+                Decimal(total.findtext('ICMSTot/vOutro') or 0)
 
         # vProd (W04)
-        vProd = self.xml.decimal('infCFe/total/ICMSTot/vProd')
-        vDescSubtot = self.xml.decimal(
-                'infCFe/total/DescAcrEntr/vDescSubtot', default=ZERO)
-        vAcresSubtot = self.xml.decimal(
-                'infCFe/total/DescAcrEntr/vAcresSubtot', default=ZERO)
+        vProd = Decimal(total.findtext('ICMSTot/vProd'))
+        vDescSubtot = Decimal(total.findtext('DescAcrEntr/vDescSubtot') or 0)
+        vAcresSubtot = Decimal(total.findtext('DescAcrEntr/vAcresSubtot') or 0)
 
         self.normal()
         self.avanco()
@@ -321,10 +329,8 @@ class ExtratoCFeVenda(ExtratoCFe):
             self.bordas(u'Acréscimo sobre subtotal',
                     '+ {:n}'.format(vAcresSubtot))
 
-        vCFe = self.xml.decimal('infCFe/total/vCFe')
-
         self.negrito()
-        self.bordas('TOTAL R$', '{:n}'.format(vCFe))
+        self.bordas('TOTAL R$', '{:n}'.format(Decimal(total.findtext('vCFe'))))
         self.negrito()
 
 
@@ -332,11 +338,11 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.normal()
         self.avanco()
 
-        for pagto in self.xml.iterate('infCFe/pgto/MP'):
-            self.bordas(util.meio_pagamento(pagto.text('cMP')),
-                    '{:n}'.format(pagto.decimal('vMP')))
+        for mp in self.root.findall('./infCFe/pgto/MP'):
+            self.bordas(util.meio_pagamento(mp.findtext('cMP')),
+                    '{:n}'.format(Decimal(mp.findtext('vMP'))))
 
-        valor_troco = self.xml.decimal('infCFe/pgto/vTroco')
+        valor_troco = Decimal(self.root.findtext('./infCFe/pgto/vTroco') or 0)
         if not valor_troco.is_zero():
             self.bordas('Troco R$', '{:n}'.format(valor_troco))
 
@@ -380,8 +386,7 @@ class ExtratoCFeVenda(ExtratoCFe):
         """
         iniciado = False
 
-        for obs in self.xml.iterate('infCFe/infAdic/obsFisco'):
-
+        for obs in self.root.findall('./infCFe/infAdic/obsFisco'):
             if not iniciado:
                 self.normal()
                 self.esquerda()
@@ -390,8 +395,8 @@ class ExtratoCFeVenda(ExtratoCFe):
                 iniciado = True
 
             self.quebrar(u'{}: {}'.format(
-                    obs.root_attr('xCampo'),
-                    obs.text('xTexto')))
+                    obs.attrib['xCampo'],
+                    obs.findtext('xTexto')))
 
         if iniciado:
             self.condensado() # desliga
@@ -399,21 +404,14 @@ class ExtratoCFeVenda(ExtratoCFe):
 
     def corpo_VIII_dados_entrega(self):
 
-        logradouro = self.xml.text('infCFe/entrega/xLgr', default='')
-        if not logradouro:
+        entrega = self.root.find('./infCFe/entrega')
+        if entrega is None:
             return
 
-        # há endereço de entrega;
-        # prepara para imprimir, por que será necessário considerar o número
-        # de colunas para construir o endereço o mais legível possível;
-        self.normal()
-
-        # uma vez que há o logradouro, então existe um endereço de entrega;
-        # se existe um endereço de entrega então os únicos elementos que
-        # NÃO SÃO OBRIGATÓRIOS são `nro` (G03) e `xCpl` (G04);
-        numero = self.xml.text('infCFe/entrega/nro', default='')
-        complemento = self.xml.text('infCFe/entrega/xCpl', default='')
-        bairro = self.xml.text('infCFe/entrega/xBairro')
+        logradouro = entrega.findtext('xLgr')
+        numero = entrega.findtext('nro')
+        complemento = entrega.findtext('xCpl')
+        bairro = entrega.findtext('xBairro')
 
         if numero: # número não é obrigatório
             # mas existe, então o coloca próximo ao logradouro
@@ -429,12 +427,13 @@ class ExtratoCFeVenda(ExtratoCFe):
                 complemento = '' # ignora a linha que deveria conter o xCpl
 
         cidade = u'{}/{}'.format(
-                self.xml.text('infCFe/entrega/xMun'),
-                self.xml.text('infCFe/entrega/UF'))
+                entrega.findtext('xMun'),
+                entrega.findtext('UF'))
 
         partes_endereco = [logradouro, complemento, bairro, cidade,]
         endereco = '\r\n'.join([e for e in partes_endereco if e])
 
+        self.normal()
         self.esquerda()
         self.separador()
         self.negrito()
@@ -442,15 +441,15 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.negrito()
         self.quebrar(u'Endereço: {}'.format(endereco))
 
-        nome_destinatario = self.xml.text('infCFe/dest/xNome', default='')
+        nome_destinatario = self.root.findtext('./infCFe/dest/xNome')
         if nome_destinatario:
             self.quebrar(u'Destinatário: {}'.format(nome_destinatario))
 
 
     def corpo_IX_observacoes_contribuinte(self):
-        infCpl = self.xml.text('infCFe/infAdic/infCpl', default='')
-        vCFeLei12741 = self.xml.decimal(
-                'infCFe/total/vCFeLei12741', default=ZERO)
+        infCpl = self.root.findtext('./infCFe/infAdic/infCpl')
+        vCFeLei12741 = Decimal(
+                self.root.findtext('./infCFe/total/vCFeLei12741') or 0)
 
         if infCpl or not vCFeLei12741.is_zero():
             self.normal()
@@ -476,16 +475,16 @@ class ExtratoCFeVenda(ExtratoCFe):
 
     def rodape(self):
 
-        sat_numero_serie = 'SAT no. {}'.format(
-                self.xml.text('infCFe/ide/nserieSAT'))
+        infCFe = self.root.find('./infCFe')
+        sat_numero_serie = 'SAT no. {}'.format(infCFe.findtext('ide/nserieSAT'))
 
         datahora = datetime.strptime('{}{}'.format(
-                self.xml.text('infCFe/ide/dEmi'),
-                self.xml.text('infCFe/ide/hEmi')), '%Y%m%d%H%M%S')
+                infCFe.findtext('ide/dEmi'),
+                infCFe.findtext('ide/hEmi')), '%Y%m%d%H%M%S')
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
 
-        chave_cfe = self.xml.attr('infCFe', 'Id')[3:] # ignora prefixo "CFe"
+        chave_cfe = infCFe.attrib['Id'][3:] # ignora prefixo "CFe"
         chave_consulta_partes = ' '.join(util.partes_chave_cfe(chave_cfe))
 
         self.normal()
@@ -508,6 +507,6 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.chave_cfe_code128(chave_cfe)
 
         self.avanco(2)
-        self.impressora.qrcode(util.dados_qrcode(self.xml),
+        self.impressora.qrcode(util.dados_qrcode(self._tree),
                 qrcode_module_size=conf.qrcode.tamanho_modulo,
                 qrcode_ecc_level=conf.qrcode.nivel_correcao)

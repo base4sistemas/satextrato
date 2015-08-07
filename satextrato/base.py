@@ -19,6 +19,7 @@
 
 import textwrap
 import warnings
+import xml.etree.ElementTree as ET
 
 from unidecode import unidecode
 
@@ -43,23 +44,26 @@ def _bordas(esquerda, direita, largura=48, espacamento_minimo=4):
 
 
 class ExtratoCFe(object):
-    """
-    Classe base para os extratos CF-e, fornecendo uma implementação padrão
-    para o cabeçalho dos CF-e de venda e para os CF-e de cancelamento. Também
-    fornece uma infraestrutura que simplifica a interface com impressoras
-    ESC/POS, acrescentando fluidez à API de impressão.
+    """Classe base para os extratos do CF-e de venda e cancelamento, fornecendo
+    uma implementação comum para o cabeçalho dos CF-e de venda e cancelamento,
+    além da infraestrutura que simplifica a interface para impressoras ESC/POS.
+
+    As implementações que realmente emitem os extratos estão nas classes
+    :class:`~satextrato.venda.ExtratoCFeVenda` e
+    :class:`~satextrato.cancelamento.ExtratoCFeCancelamento`.
     """
 
-    def __init__(self, xmlstr, impressora):
-        """
+    def __init__(self, fp, impressora):
+        """Inicia uma instância de :class:`ExtratoCFe`.
 
-        :param xmlstr: String (unicode) contendo o XML do CF-e-SAT.
+        :param fp: Um objeto *file-like* para o documento XML que contém o CF-e.
         :param impressora: Um objeto :class:`escpos.impl.epson.GenericESCPOS`
             ou especialização.
+
         """
         super(ExtratoCFe, self).__init__()
-        self._xmlstr = xmlstr
-        self.xml = util.XMLFacadeFromString(self._xmlstr)
+        self._tree = ET.parse(fp)
+        self.root = self._tree.getroot() # referência para o elemento `CFe`
         self.impressora = impressora
 
         self._flag_negrito = False
@@ -75,6 +79,42 @@ class ExtratoCFe(object):
         elif self._flag_expandido and not self._flag_condensado:
             return conf.colunas.expandido
         return conf.colunas.normal
+
+
+    @property
+    def is_ambiente_testes(self):
+        """Indica se o CF-e-SAT foi emitido em "ambiente de testes".
+
+        Embora o Manual de Orientação para emissão dos extratos do CF-e-SAT não
+        seja claro quanto ao que significa "estar em condição de teste", esta
+        implementação irá assumir "condição de testes" quando:
+
+        * elemento B10 ``tpAmb`` for ``2`` (ambiente de testes) **OU**
+        * elemento B12 ``signAC`` possuir a assinatura de teste, indicada pela
+          constante :attr:`satcomum.constantes.ASSINATURA_AC_TESTE`.
+
+        .. note::
+
+            O CF-e de cancelamento não possui o elemento ``tpAmb``, conforme
+            descrito na ER SAT, item 4.2.3 **Layout do CF-e de cancelamento**.
+
+        :raises ValueError: Se o documento XML não identificar um CF-e-SAT de
+            venda ou cancelamento.
+
+        """
+        signAC = self.root.findtext('./infCFe/ide/signAC')
+
+        if self.root.tag == constantes.ROOT_TAG_VENDA:
+            tpAmb = self.root.findtext('./infCFe/ide/tpAmb')
+            return tpAmb == constantes.B10_TESTES or \
+                    signAC == constantes.ASSINATURA_AC_TESTE
+
+        elif self.root.tag == constantes.ROOT_TAG_CANCELAMENTO:
+            # CF-e-SAT de cancelamento não possui `tpAmb`
+            return signAC == constantes.ASSINATURA_AC_TESTE
+
+        raise ValueError('Documento nao parece ser um CF-e-SAT, '
+                'root tag {!r}'.format(self.root.tag))
 
 
     def imprimir(self):
@@ -168,22 +208,8 @@ class ExtratoCFe(object):
         return self
 
 
-    def em_condicao_de_teste(self):
-        """
-        Identifica se o CF-e de venda/cancelamento está em "condição de teste".
-
-        O Manual de Orientação não é claro quanto o que significa "estar em
-        condição de teste". Este método irá assumir "condição de teste" quando a
-        assinatura (B11) possuir a assinatura de teste, indicada pela constante
-        :attr:`satcomum.constantes.ASSINATURA_AC_TESTE`.
-        """
-        return self.xml.text('infCFe/ide/signAC') == \
-                constantes.ASSINATURA_AC_TESTE
-
-
     def indicacao_de_teste(self):
-        """
-        Imprime a indicação de teste se o CF-e estiver em "condição de teste".
+        """Imprime indicação de teste se o CF-e estiver em "condição de teste".
         Caso contrário, não faz nada. A indicação de teste, conforme o Manual de
         Orientação deverá ser impressa em itálico (note a linha em branco acima
         e abaixo da inscrição "TESTE"):
@@ -206,7 +232,7 @@ class ExtratoCFe(object):
             sinais de ``<`` dão uma boa ideia do resultado final.
 
         """
-        if self.em_condicao_de_teste():
+        if self.is_ambiente_testes:
             self.italico()
             self.avanco()
             self.texto('= T E S T E =')
@@ -221,11 +247,11 @@ class ExtratoCFe(object):
         Obtém o número do extrato, elemento ``nCFe`` (B06). Se o CF-e estiver
         em condição de teste retornará ``000000``.
 
-        Veja :meth:`em_condicao_de_teste` para outros detalhes.
+        Veja :meth:`is_ambiente_testes` para outros detalhes.
         """
-        if self.em_condicao_de_teste():
+        if self.is_ambiente_testes:
             return '0' * 6
-        return self.xml.text('infCFe/ide/nCFe')
+        return self.root.findtext('./infCFe/ide/nCFe')
 
 
     def chave_cfe_code128(self, chave):
@@ -274,13 +300,16 @@ class ExtratoCFe(object):
 
         self.normal()
 
-        nome_fantasia = self.xml.text('infCFe/emit/xFant', default='')
-        razao_social = self.xml.text('infCFe/emit/xNome')
+        emit = self.root.find('./infCFe/emit')
+        enderEmit = emit.find('enderEmit')
 
-        logradouro = self.xml.text('infCFe/emit/enderEmit/xLgr')
-        numero = self.xml.text('infCFe/emit/enderEmit/nro', default='')
-        complemento = self.xml.text('infCFe/emit/enderEmit/xCpl', default='')
-        bairro = self.xml.text('infCFe/emit/enderEmit/xBairro')
+        nome_fantasia = emit.findtext('xFant')
+        razao_social = emit.findtext('xNome')
+
+        logradouro = enderEmit.findtext('xLgr')
+        numero = enderEmit.findtext('nro')
+        complemento = enderEmit.findtext('xCpl')
+        bairro = enderEmit.findtext('xBairro')
 
         if numero: # número não é obrigatório
             logradouro = u'{}, {}'.format(logradouro, numero)
@@ -295,22 +324,16 @@ class ExtratoCFe(object):
                 complemento = '' # ignora a linha que deveria conter o xCpl
 
         cidade = u'{}/{} CEP: {}'.format(
-                self.xml.text('infCFe/emit/enderEmit/xMun'),
-                br.uf_pelo_codigo(int(self.xml.text('infCFe/ide/cUF'))),
-                br.as_cep(self.xml.text('infCFe/emit/enderEmit/CEP')))
+                enderEmit.findtext('xMun'),
+                br.uf_pelo_codigo(int(self.root.findtext('./infCFe/ide/cUF'))),
+                br.as_cep(enderEmit.findtext('CEP')))
 
-        partes_endereco = [
-                logradouro,
-                complemento,
-                bairro,
-                cidade,]
-
+        partes_endereco = [logradouro, complemento, bairro, cidade,]
         endereco = u'\r\n'.join([e for e in partes_endereco if e])
 
-        im = 'IM: {}'.format(self.xml.text('infCFe/emit/IM', default=''))
-        ie = 'IE: {}'.format(self.xml.text('infCFe/emit/IE'))
-        cnpj = 'CNPJ: {}'.format(
-                br.as_cnpj(self.xml.text('infCFe/emit/CNPJ')))
+        cnpj = 'CNPJ: {}'.format(br.as_cnpj(emit.findtext('CNPJ')))
+        im = 'IM: {}'.format(emit.findtext('IM') or '')
+        ie = 'IE: {}'.format(emit.findtext('IE'))
 
         self.centro()
         self.negrito()

@@ -17,7 +17,10 @@
 # limitations under the License.
 #
 
+import xml.etree.ElementTree as ET
+
 from datetime import datetime
+from decimal import Decimal
 
 from satcomum import br
 from satcomum import util
@@ -27,25 +30,29 @@ from .base import ExtratoCFe
 
 
 class ExtratoCFeCancelamento(ExtratoCFe):
+    """Implementa impressão do extrato do CF-e de cancelamento."""
 
 
-    def __init__(self, xmlstr, xmlstr_cfe_cancelado, impressora):
-        """
+    def __init__(self, fp_venda, fp_cancelamento, impressora):
+        """Inicia uma instância de :class:`ExtratoCFeCancelamento`.
 
-        :param xmlstr: String (unicode) contendo o XML do CF-e-SAT de
-            cancelamento.
+        :param fp_venda: Um objeto *file-like* para o documento XML que
+            contém o CF-e de venda cancelado (o documento eletrônico da venda
+            que fora cancelada).
 
-        :param xmlstr_cfe_cancelado: String (unicode) contendo o XML do
-            CF-e-SAT de venda para o qual o extrato de cancelamento será
-            emitido (o CF-e de venda que foi cancelado).
+        :param fp_cancelamento: Um objeto *file-like* para o documento XML que
+            contém o CF-e de cancelamento (o documento eletrônico que autoriza
+            o cancelamento da venda).
 
         :param impressora: Um objeto :class:`escpos.impl.epson.GenericESCPOS`
             ou especialização.
+
         """
-        super(ExtratoCFeCancelamento, self).__init__(xmlstr, impressora)
-        self._xmlstr_cfe_cancelado = xmlstr_cfe_cancelado
-        self.xml_cfe_cancelado = \
-                util.XMLFacadeFromString(self._xmlstr_cfe_cancelado)
+        super(ExtratoCFeCancelamento, self).__init__(
+                fp_cancelamento, impressora)
+        # (!) `self.root` mantém uma referência para o elemento `CFeCanc`
+        self._tree_venda = ET.parse(fp_venda)
+        self.root_venda = self._tree_venda.getroot() # ref. elemento `CFe`
 
 
     def corpo(self):
@@ -74,8 +81,8 @@ class ExtratoCFeCancelamento(ExtratoCFe):
 
 
     def corpo_dados_consumidor(self):
-        documento = self.xml.text('infCFe/dest/CPF',
-                alternative_xpath='infCFe/dest/CNPJ', default='')
+        documento = self.root.findtext('./infCFe/dest/CNPJ') or \
+                self.root.findtext('./infCFe/dest/CPF') or ''
 
         if br.is_cnpjcpf(documento):
             self.normal()
@@ -84,8 +91,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
             self.texto('CPF/CNPJ do Consumidor: {}'.format(
                     br.as_cnpjcpf(documento)))
         else:
-            # apenas normaliza e avança;
-            # o total do cupom fiscal cancelado será impresso em seguida;
+            # não há um consumidor identificado; apenas normaliza e avança
             self.normal()
             self.avanco()
 
@@ -95,22 +101,22 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.esquerda()
         self.negrito()
         self.texto('TOTAL R$ {:n}'.format(
-                self.xml.decimal('infCFe/total/vCFe')))
+                Decimal(self.root.findtext('./infCFe/total/vCFe'))))
         self.negrito()
 
 
     def corpo_dados_cfe_cancelado(self):
 
-        sat_numero_serie = 'SAT no. {}'.format(
-                self.xml.text('infCFe/ide/nserieSAT'))
+        infCFe = self.root_venda.find('./infCFe') # (!) infCFe do CF-e de venda
+        sat_numero_serie = 'SAT no. {}'.format(infCFe.findtext('ide/nserieSAT'))
 
         datahora = datetime.strptime('{}{}'.format(
-                self.xml.text('infCFe/dEmi'),
-                self.xml.text('infCFe/hEmi')), '%Y%m%d%H%M%S')
+                infCFe.findtext('ide/dEmi'),
+                infCFe.findtext('ide/hEmi')), '%Y%m%d%H%M%S')
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
 
-        chave = self.xml.attr('infCFe', 'chCanc')[3:] # ignora prefixo "CFe"
+        chave = infCFe.attrib['Id'][3:] # ignora prefixo "CFe"
         chave_consulta_partes = ' '.join(util.partes_chave_cfe(chave))
 
         self.normal()
@@ -133,7 +139,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(util.dados_qrcode(self.xml_cfe_cancelado),
+        self.impressora.qrcode(util.dados_qrcode(self._tree_venda),
                 qrcode_module_size=conf.qrcode.tamanho_modulo,
                 qrcode_ecc_level=conf.qrcode.nivel_correcao)
 
@@ -141,16 +147,16 @@ class ExtratoCFeCancelamento(ExtratoCFe):
 
     def rodape(self):
 
-        sat_numero_serie = 'SAT no. {}'.format(
-                self.xml.text('infCFe/ide/nserieSAT'))
+        infCFe = self.root.find('./infCFe')
+        sat_numero_serie = 'SAT no. {}'.format(infCFe.findtext('ide/nserieSAT'))
 
         datahora = datetime.strptime('{}{}'.format(
-                self.xml.text('infCFe/ide/dEmi'),
-                self.xml.text('infCFe/ide/hEmi')), '%Y%m%d%H%M%S')
+                infCFe.findtext('ide/dEmi'),
+                infCFe.findtext('ide/hEmi')), '%Y%m%d%H%M%S')
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
 
-        chave = self.xml.attr('infCFe', 'Id')[3:] # ignora prefixo "CFe"
+        chave = infCFe.attrib['Id'][3:] # ignora prefixo "CFe"
         chave_consulta_partes = ' '.join(util.partes_chave_cfe(chave))
 
         self.normal()
@@ -176,6 +182,6 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(util.dados_qrcode(self.xml),
+        self.impressora.qrcode(util.dados_qrcode(self._tree),
                 qrcode_module_size=conf.qrcode.tamanho_modulo,
                 qrcode_ecc_level=conf.qrcode.nivel_correcao)
