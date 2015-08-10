@@ -2,7 +2,7 @@
 Projeto Extratos CF-e-SAT
 =========================
 
-.. image:: https://img.shields.io/badge/status-planning-red.svg
+.. image:: https://img.shields.io/pypi/status/satextrato.svg
     :target: https://pypi.python.org/pypi/satextrato/
     :alt: Development status
 

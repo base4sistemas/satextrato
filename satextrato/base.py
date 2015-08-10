@@ -255,8 +255,9 @@ class ExtratoCFe(object):
 
 
     def chave_cfe_code128(self, chave):
-        """
-        Imprime o código de barras Code128 da chave do CF-e informada.
+        """Imprime o código de barras padrão Code128 para a chave do CF-e.
+
+        :param chave: Instância de :class:`satcomum.ersat.ChaveCFeSAT`.
         """
         code128_params = dict(
                 barcode_height=conf.code128_altura,
@@ -265,12 +266,13 @@ class ExtratoCFe(object):
 
         if conf.code128_quebrar:
             # imprime o Code128 da chave do CF-e em duas partes de 22 digitos
-            chave_quebrada = util.partes_chave_cfe(chave, partes=2)
-            self.impressora.code128(chave_quebrada[0], **code128_params)
+            partes = chave.partes(2)
+            self.impressora.code128(partes[0], **code128_params)
             self.avanco()
-            self.impressora.code128(chave_quebrada[1], **code128_params)
+            self.impressora.code128(partes[1], **code128_params)
         else:
-            self.impressora.code128(chave, **code128_params)
+            partes = chave.partes(1)
+            self.impressora.code128(partes[0], **code128_params)
 
 
     def fim_documento(self):

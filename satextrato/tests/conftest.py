@@ -101,11 +101,6 @@ def xml_cancelamento():
     return XML_CANCELAMENTO
 
 
-@pytest.fixture(scope='module')
-def xml_venda_complexo():
-    return XML_VENDA_COMPLEXO
-
-
 XML_VENDA = u"""<?xml version="1.0"?>
 <CFe>
   <infCFe Id="CFe35150808723218000186599000040190000241114257"

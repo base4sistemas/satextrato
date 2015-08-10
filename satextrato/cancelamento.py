@@ -23,7 +23,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from satcomum import br
-from satcomum import util
+from satcomum import ersat
 
 from .config import conf
 from .base import ExtratoCFe
@@ -116,8 +116,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
 
-        chave = infCFe.attrib['Id'][3:] # ignora prefixo "CFe"
-        chave_consulta_partes = ' '.join(util.partes_chave_cfe(chave))
+        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id']) # CF-e de venda
 
         self.normal()
         self.centro()
@@ -130,7 +129,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.avanco()
         self.esquerda()
         self.condensado()
-        self.texto(chave_consulta_partes)
+        self.texto(' '.join(chave.partes()))
         self.condensado()
 
         self.avanco()
@@ -139,7 +138,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(util.dados_qrcode(self._tree_venda),
+        self.impressora.qrcode(ersat.dados_qrcode(self._tree_venda),
                 qrcode_module_size=conf.qrcode.tamanho_modulo,
                 qrcode_ecc_level=conf.qrcode.nivel_correcao)
 
@@ -147,7 +146,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
 
     def rodape(self):
 
-        infCFe = self.root.find('./infCFe')
+        infCFe = self.root.find('./infCFe') # (!) infCFe do CF-e de cancelamento
         sat_numero_serie = 'SAT no. {}'.format(infCFe.findtext('ide/nserieSAT'))
 
         datahora = datetime.strptime('{}{}'.format(
@@ -156,8 +155,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
 
-        chave = infCFe.attrib['Id'][3:] # ignora prefixo "CFe"
-        chave_consulta_partes = ' '.join(util.partes_chave_cfe(chave))
+        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id']) # CF-e de cancelamento
 
         self.normal()
         self.avanco(2)
@@ -173,7 +171,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.avanco()
         self.esquerda()
         self.condensado()
-        self.texto(chave_consulta_partes)
+        self.texto(' '.join(chave.partes()))
         self.condensado()
 
         self.avanco()
@@ -182,6 +180,6 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(util.dados_qrcode(self._tree),
+        self.impressora.qrcode(ersat.dados_qrcode(self._tree),
                 qrcode_module_size=conf.qrcode.tamanho_modulo,
                 qrcode_ecc_level=conf.qrcode.nivel_correcao)

@@ -23,6 +23,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from satcomum import br
+from satcomum import ersat
 from satcomum import util
 
 from .config import ZERO
@@ -339,7 +340,7 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.avanco()
 
         for mp in self.root.findall('./infCFe/pgto/MP'):
-            self.bordas(util.meio_pagamento(mp.findtext('cMP')),
+            self.bordas(ersat.meio_pagamento(mp.findtext('cMP')),
                     '{:n}'.format(Decimal(mp.findtext('vMP'))))
 
         valor_troco = Decimal(self.root.findtext('./infCFe/pgto/vTroco') or 0)
@@ -484,8 +485,7 @@ class ExtratoCFeVenda(ExtratoCFe):
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
 
-        chave_cfe = infCFe.attrib['Id'][3:] # ignora prefixo "CFe"
-        chave_consulta_partes = ' '.join(util.partes_chave_cfe(chave_cfe))
+        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id'])
 
         self.normal()
         self.separador()
@@ -498,15 +498,15 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.avanco()
         self.esquerda()
         self.condensado()
-        self.texto(chave_consulta_partes)
+        self.texto(' '.join(chave.partes()))
         self.condensado()
 
         self.avanco()
         self.centro()
 
-        self.chave_cfe_code128(chave_cfe)
+        self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(util.dados_qrcode(self._tree),
+        self.impressora.qrcode(ersat.dados_qrcode(self._tree),
                 qrcode_module_size=conf.qrcode.tamanho_modulo,
                 qrcode_ecc_level=conf.qrcode.nivel_correcao)
