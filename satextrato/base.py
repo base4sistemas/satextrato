@@ -74,11 +74,13 @@ class ExtratoCFe(object):
 
     @property
     def _colunas(self):
-        if self._flag_condensado and not self._flag_expandido:
-            return conf.colunas.condensado
-        elif self._flag_expandido and not self._flag_condensado:
-            return conf.colunas.expandido
-        return conf.colunas.normal
+        if self._flag_condensado:
+            num_colunas = conf.colunas.condensado
+        elif self._flag_expandido:
+            num_colunas = conf.colunas.expandido
+        else:
+            num_colunas = conf.colunas.normal
+        return num_colunas
 
 
     @property
@@ -276,8 +278,7 @@ class ExtratoCFe(object):
 
 
     def fim_documento(self):
-        """
-        Encerra o documento, imprimindo o rodapé (se houver) e avançando ou
+        """Encerra o documento, imprimindo o rodapé (se houver) e avançando ou
         guilhotinando o documento, conforme as configurações.
         """
         self.normal()
@@ -292,6 +293,8 @@ class ExtratoCFe(object):
         if conf.cortar_documento and \
                 self.impressora.hardware_features.get(
                         escpos.feature.CUTTER, False):
+            if conf.avancar_linhas > 0:
+                self.avanco(conf.avancar_linhas)
             self.impressora.cut(partial=conf.cortar_parcialmente)
 
         elif conf.avancar_linhas > 0:

@@ -102,25 +102,32 @@ class ConfiguracoesExtrato(object):
     """
 
     avancar_linhas = 10
-    """
-    Número de linhas em branco a avançar ao final do Extrato do CF-e-SAT.
+    """Número de linhas em branco a avançar ao final do Extrato do CF-e-SAT.
 
-    Esta configuração será considerada apenas se :attr:`cortar_documento`
-    estiver configurado como ``False``. Para não cortar nem avançar, deixe
-    :attr:`cortar_documento` como ``False`` e :attr:`avancar_linhas` em ``0``.
+    .. note::
+
+        Esta configuração será considerada mesmo se :attr:`cortar_documento`
+        estiver configurado como ``True``, avançando um número ``n`` de linhas
+        em branco antes de realizar o corte.
+
     """
 
     cortar_documento = True
-    """
-    Se o documento deve ser cortado ao ser concluído. Esta configuração não
-    terá efeito se o equipamento não possuir uma guilhotina. Se o equipamento
-    não possuir uma guilhotina, então :attr:`avancar_linhas` será respeitado.
+    """Se o documento deve ser cortado ao ser concluído. Esta configuração não
+    terá efeito se o equipamento não possuir uma guilhotina.
+
+    .. note::
+
+        Algumas impressoras possuem a guilhotina muito próxima do cabeçote de
+        impressão, fazendo com que o corte elimine dados que ainda estão
+        abaixo da linha de corte. Use :attr:`avancar_linhas` para determinar o
+        número de linhas em branco a avançar antes de acionar a guilhotina.
+
     """
 
     cortar_parcialmente = True
-    """
-    Ao cortar o documento (:attr:`cortar_documento`), esta propriedade indicará
-    se o corte deverá ser parcial ou total.
+    """Ao cortar o documento (:attr:`cortar_documento`), esta propriedade
+    indicará se o corte deverá ser parcial ou total.
     """
 
     exibir_nome_consumidor = False
