@@ -1,4 +1,5 @@
 __pycache__/
+.cache/
 
 /build/
 /dist/
@@ -9,3 +10,4 @@ __pycache__/
 *.pyo
 *.pyd
 *.sublime-workspace
+

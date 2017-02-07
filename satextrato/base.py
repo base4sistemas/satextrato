@@ -33,14 +33,76 @@ from satcomum import util
 from .config import conf
 
 
-def _bordas(esquerda, direita, largura=48, espacamento_minimo=4):
-        espacamento = largura - (len(esquerda) + len(direita))
-        if espacamento < espacamento_minimo:
-            espacamento = espacamento_minimo
-            comprimento_maximo = int(largura / 2) - espacamento_minimo
-            esquerda = esquerda[:comprimento_maximo]
-            direita = direita[:comprimento_maximo]
-        return '%s%s%s' % (esquerda, ' ' * espacamento, direita)
+def _bordas(esquerda, direita, largura=48, espacamento_minimo=4,
+        favorecer_direita=True):
+    """Prepara duas strings para serem impressas alinhadas às bordas opostas da
+    mídia, os textos da esquerda (borda esquerda) e da direita (borda direita),
+    respeitando uma largura e espaçamento mínimo determinados.
+
+    .. sourcecode:: python
+
+        >>> _bordas('a', 'b')
+        'a                                              b'
+
+        >>> esquerda = 'a' * 30
+        >>> direita = 'b' * 30
+        >>> _bordas(esquerda, direita)
+        'aaaaaaaaaaaaaaaaaaaaaa    bbbbbbbbbbbbbbbbbbbbbb'
+
+        >>> esquerda = 'Gazeta publica hoje breve nota de faxina na quermesse'
+        >>> direita = 'Um pequeno jabuti xereta viu dez cegonhas felizes'
+        >>> _bordas(esquerda, direita, espacamento_minimo=1)
+        'Gazeta publica hoje bre viu dez cegonhas felizes'
+
+
+    :param str esquerda: O texto a ser exibido à esquerda. Se o texto não
+        couber (em relação à largura e ao espaçamento mínimo) será exibida
+        apenas a porção mais à esquerda desse texto, sendo cortados (não
+        impressos) os caracteres do final do texto.
+
+    :param str direita: O texto à ser exibido à direita. Se o texto da direita
+        não couber (em relação à largura e ao espaçamento mínimo) será exibida
+        apenas porção mais à direita desse texto, sendo cortados (não impressos)
+        os caracteres do início do texto.
+
+    :param int largura: Largura em caracteres a considerar ao calcular o vão
+        entre os textos da esquerda e direita. O padrão é 48, já que é a
+        largura mais comum entre as impressoras térmicas de bobina quando
+        imprimindo com a fonte normal.
+
+    :param int espacamento_minimo: Opcional. Determina o número de espaços
+        mínimo a ser deixado entre os textos da esquerda e direita. O padrão
+        são quatro espaços.
+
+    :param bool favorecer_direita: Opcional. Determina se o texto da direita
+        deverá ser favorecido com um espaço maior quando houver diferença
+        (sobra) entre os textos da esquerda e direita em relação ao espaçamento
+        mínimo determinado. O padrão é favorecer o texto da direita, já que é
+        normalmente o dado relevante, como um valor ou percentual.
+
+    :returns: Uma string contendo os textos da esquerda e direita encaixados na
+        largura determinada, respeitando um espaçamento mínimo entre eles. Se
+        necessário os textos serão truncados para respeitar a largura (o texto
+        da esquerda será truncado no final e o texto da direita será truncado
+        no início).
+
+    :rtype: str
+
+    """
+    espacamento = largura - (len(esquerda) + len(direita))
+    if espacamento < espacamento_minimo:
+        espacamento = espacamento_minimo
+        cpmax = int((largura - espacamento) / 2)
+        cpmax_esq, cpmax_dir = cpmax, cpmax
+        diferenca = largura - (espacamento + cpmax * 2)
+        if diferenca > 0:
+            if favorecer_direita:
+                cpmax_dir += diferenca
+            else:
+                cpmax_esq += diferenca
+        esquerda = esquerda[:cpmax_esq]
+        direita = direita[-cpmax_dir:]
+    return '%s%s%s' % (esquerda, ' ' * espacamento, direita)
 
 
 class ExtratoCFe(object):
