@@ -18,6 +18,10 @@ Projeto Extratos CF-e-SAT
     :target: https://pypi.python.org/pypi/satextrato/
     :alt: Latest version
 
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+   :alt: Join the chat at https://gitter.im/base4sistemas/satcfe
+   :target: https://gitter.im/base4sistemas/satcfe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
 -------
 
     This project is about printing receipts from eletronic fiscal documents
@@ -29,6 +33,7 @@ Projeto Extratos CF-e-SAT
     Refer to the `oficial web site <http://www.fazenda.sp.gov.br/sat/>`_ for
     more information (in brazilian portuguese only).
 
+
 Emissão de extratos do `CF-e-SAT`_ diretamente a partir dos documentos
 eletrônicos que representam o CF-e de venda e/ou de cancelamento, na forma
 de arquivos em formato `XML`_.
@@ -39,31 +44,29 @@ normalmente térmicas (mas não limitado à elas), através da abstração
 
 Para comunicar-se com equipamentos SAT veja o `Projeto SATCFe`_.
 
-.. image:: https://badges.gitter.im/Join%20Chat.svg
-   :alt: Join the chat at https://gitter.im/base4sistemas/satcfe
-   :target: https://gitter.im/base4sistemas/satcfe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
+Exemplos de Uso
+===============
 
 
 Extratos do CF-e de Venda
 -------------------------
 
-Para emissão do extrato para um CF-e de venda, você irá precisar do XML do CF-e,
-e uma mini-impressora ESC/POS |reg| (veja as implementações disponíveis no
-projeto `PyESCPOS`_):
+Para emitir um extrato de um CF-e de venda, você irá precisar do XML do CF-e-SAT
+de venda, que é o documento fiscal, e uma impressora ESC/POS |reg| (veja as
+implementações disponíveis no projeto `PyESCPOS`_):
 
 .. sourcecode:: python
 
-    from escpos.serial import SerialSettings
+    from escpos.serial import SerialConnection
     from escpos.impl.daruma import DR700
     from satextrato import ExtratoCFeVenda
 
-    # mini-impressora Daruma (DR700) conectada à porta serial COM1
-    conn = SerialSettings.as_from('COM1:9600,8,1,N').get_connection()
+    conn = SerialConnection.create('COM1:9600,8,1,N')
     impressora = DR700(conn)
     impressora.init()
 
-    # abre o arquivo do CF-e e emite o extrato
-    with open(r'C:\CFe545090.xml', 'r') as fp:
+    with open(r'C:\CFe351702.xml', 'r') as fp:
         extrato = ExtratoCFeVenda(fp, impressora)
         extrato.imprimir()
 
@@ -71,9 +74,9 @@ projeto `PyESCPOS`_):
 Extratos do CF-e de Cancelamento
 --------------------------------
 
-Para emitir um extrato do CF-e de cancelamento, além do do CF-e de cancelamento,
-você também irá precisar do do CF-e de venda que fora cancelado. Seguindo a
-mesma linha do exemplo anterior:
+Para emitir um extrato do CF-e-SAT de cancelamento, além do documento de
+cancelamento você também irá precisar do documento da venda, ao qual o documento
+de cancelamento se refere. Seguindo a mesma linha do exemplo anterior:
 
 .. sourcecode:: python
 
@@ -82,10 +85,16 @@ mesma linha do exemplo anterior:
         extrato.imprimir()
 
 
+Mais Exemplos
+-------------
+
+Eventualmente, você poderá encontrar mais exemplos no `Wiki`_ do projeto.
+
+
 Executando Testes
 -----------------
 
-Para executar os testes de emissão dos extratos em mini-impressoras conectadas
+Para executar os testes de emissão dos extratos em impressoras conectadas
 à portas seriais, ou em impressoras USB a partir de virtualizadores de portas
 seriais:
 
@@ -112,3 +121,4 @@ seriais:
 .. _`PyESCPOS`: https://github.com/base4sistemas/pyescpos
 .. _`Projeto SATCFe`: https://github.com/base4sistemas/satcfe
 .. _`XML`: http://www.w3.org/XML/
+.. _`Wiki`: https://github.com/base4sistemas/satextrato/wiki
