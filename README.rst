@@ -105,6 +105,17 @@ seriais:
             "--escpos-if=serial "\
             "--serial-port=/dev/ttyS7"
 
+Para executar os testes em uma impressora conectada à rede, via TCP/IP no
+endereço ``192.168.1.200`` porta ``9100``:
+
+.. sourcecode:: shell
+
+    $ python setup.py test -a \
+            "--escpos-impl=escpos.impl.epson.TMT20 "\
+            "--escpos-if=network "\
+            "--network-host=192.168.1.200 "\
+            "--network-port=9100 "
+
 ..
     Sphinx Documentation: Substitutions at
     http://sphinx-doc.org/rest.html#substitutions

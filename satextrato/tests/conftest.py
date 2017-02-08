@@ -30,19 +30,7 @@ def pytest_addoption(parser):
             help='implementacao ESC/POS a ser instanciada')
 
     parser.addoption('--escpos-if', action='store', default='serial',
-            help='interface ESC/POS a ser utilizada (serial, usb, bluetooth)')
-
-    # USB, configurações de porta
-    # --usb-idvendor
-    # --usb-idproduct
-    # --usb-bus
-    # --usb-ep-out
-    # --usb-ep-in
-    #
-
-    # Bluetooth, configurações da conexão
-    # --bluetooth-mac
-    #
+            help='interface ESC/POS a ser utilizada (serial, network)')
 
     # serial (RS232), configurações de porta
     default_port = 'COM1' if 'win' in sys.platform else '/dev/ttyS0'
@@ -65,30 +53,58 @@ def pytest_addoption(parser):
     parser.addoption('--serial-protocol', action='store', default='RTSCTS',
             help='porta serial, protocolo')
 
+    # network TCP/IP
+    parser.addoption('--network-host', action='store', default='10.0.0.1',
+            help='endereco do host, nome de dominio ou IP')
+
+    parser.addoption('--network-port', action='store', default='9100',
+            help='numero da porta')
+
+
+class InterfaceFactory(object):
+
+    def __init__(self, request):
+        self._request = request
+
+
+    def get_connection(self):
+        interface = self._request.config.getoption('--escpos-if')
+        return getattr(self, 'create_{}_connection'.format(interface))()
+
+
+    def create_serial_connection(self):
+        from escpos.serial import SerialConnection
+        options = [
+                self._request.config.getoption('--serial-port'),
+                self._request.config.getoption('--serial-baudrate'),
+                self._request.config.getoption('--serial-databits'),
+                self._request.config.getoption('--serial-stopbits'),
+                self._request.config.getoption('--serial-parity'),
+                self._request.config.getoption('--serial-protocol'),]
+        conn = SerialConnection.create(':'.join(options))
+        return conn
+
+
+    def create_network_connection(self):
+        from escpos.network import NetworkConnection
+        options = [
+                self._request.config.getoption('--network-host'),
+                self._request.config.getoption('--network-port'),]
+        conn = NetworkConnection.create(':'.join(options))
+        return conn
+
 
 @pytest.fixture(scope='module')
 def escpos_interface(request):
-    interface = request.config.getoption('--escpos-if')
-    if interface == 'serial':
-        from escpos.serial import SerialSettings
-        options = [
-                request.config.getoption('--serial-port'),
-                request.config.getoption('--serial-baudrate'),
-                request.config.getoption('--serial-databits'),
-                request.config.getoption('--serial-stopbits'),
-                request.config.getoption('--serial-parity'),
-                request.config.getoption('--serial-protocol'),]
-        conn = SerialSettings.as_from(':'.join(options)).get_connection()
-        return conn
-    else:
-        raise NotImplementedError('Interface nao disponivel: %s' % interface)
+    factory = InterfaceFactory(request)
+    return factory.get_connection()
 
 
 @pytest.fixture(scope='module')
 def escpos_impl(request):
     names = request.config.getoption('--escpos-impl').split('.')
-    _module = importlib.import_module('.'.join(names[:-1])) # escpos.impl.epson
-    return getattr(_module, names[-1]) # GenericESCPOS <class>
+    _module = importlib.import_module('.'.join(names[:-1]))
+    return getattr(_module, names[-1])
 
 
 @pytest.fixture(scope='module')
