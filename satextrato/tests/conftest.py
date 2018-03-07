@@ -23,42 +23,25 @@ import sys
 import pytest
 
 
+from escpos.conn import CONNECTION_TYPES
+
+
 def pytest_addoption(parser):
 
-    parser.addoption('--escpos-impl', action='store',
+    parser.addoption('--escpos-impl', action='store', metavar='CLASSNAME',
             default='escpos.impl.epson.GenericESCPOS',
-            help='implementacao ESC/POS a ser instanciada')
+            help='Implementacao ESC/POS a ser instanciada')
 
     parser.addoption('--escpos-if', action='store', default='serial',
-            help='interface ESC/POS a ser utilizada (serial, network)')
+            choices=[alias for alias, type_info in CONNECTION_TYPES],
+            help='Interface com o dispositivo')
 
     # serial (RS232), configurações de porta
-    default_port = 'COM1' if 'win' in sys.platform else '/dev/ttyS0'
+    default_serial_port = 'COM1' if 'win' in sys.platform else '/dev/ttyS0'
 
-    parser.addoption('--serial-port', action='store', default=default_port,
-            help='porta serial, nome da porta')
-
-    parser.addoption('--serial-baudrate', action='store', default='9600',
-            help='porta serial, velocidade de transmissao')
-
-    parser.addoption('--serial-databits', action='store', default='8',
-            help='porta serial, bits de dados')
-
-    parser.addoption('--serial-stopbits', action='store', default='1',
-            help='porta serial, bits de parada')
-
-    parser.addoption('--serial-parity', action='store', default='N',
-            help='porta serial, paridade')
-
-    parser.addoption('--serial-protocol', action='store', default='RTSCTS',
-            help='porta serial, protocolo')
-
-    # network TCP/IP
-    parser.addoption('--network-host', action='store', default='10.0.0.1',
-            help='endereco do host, nome de dominio ou IP')
-
-    parser.addoption('--network-port', action='store', default='9100',
-            help='numero da porta')
+    parser.addoption('--escpos-if-settings', action='store', metavar='SETTINGS',
+            default='{}:9600,8,1,N,RTSCTS'.format(default_serial_port),
+            help='String de conexão (de acordo com a interface com o dispositivo)')
 
 
 class InterfaceFactory(object):
@@ -69,28 +52,37 @@ class InterfaceFactory(object):
 
     def get_connection(self):
         interface = self._request.config.getoption('--escpos-if')
-        return getattr(self, 'create_{}_connection'.format(interface))()
+        settings = self._request.config.getoption('--escpos-if-settings')
+        return getattr(self, 'create_{}_connection'.format(interface))(settings)
 
 
-    def create_serial_connection(self):
-        from escpos.serial import SerialConnection
-        options = [
-                self._request.config.getoption('--serial-port'),
-                self._request.config.getoption('--serial-baudrate'),
-                self._request.config.getoption('--serial-databits'),
-                self._request.config.getoption('--serial-stopbits'),
-                self._request.config.getoption('--serial-parity'),
-                self._request.config.getoption('--serial-protocol'),]
-        conn = SerialConnection.create(':'.join(options))
+    def create_bluetooth_connection(self, settings):
+        from escpos import BluetoothConnection
+        conn = BluetoothConnection.create(settings)
         return conn
 
 
-    def create_network_connection(self):
-        from escpos.network import NetworkConnection
-        options = [
-                self._request.config.getoption('--network-host'),
-                self._request.config.getoption('--network-port'),]
-        conn = NetworkConnection.create(':'.join(options))
+    def create_dummy_connection(self, settings):
+        from escpos import DummyConnection
+        conn = DummyConnection.create(settings)
+        return conn
+
+
+    def create_file_connection(self, settings):
+        from escpos import FileConnection
+        conn = FileConnection.create(settings)
+        return conn
+
+
+    def create_network_connection(self, settings):
+        from escpos import NetworkConnection
+        conn = NetworkConnection.create(settings)
+        return conn
+
+
+    def create_serial_connection(self, settings):
+        from escpos import SerialConnection
+        conn = SerialConnection.create(settings)
         return conn
 
 

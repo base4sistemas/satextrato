@@ -58,7 +58,7 @@ implementações disponíveis no projeto `PyESCPOS`_):
 
 .. sourcecode:: python
 
-    from escpos.serial import SerialConnection
+    from escpos import SerialConnection
     from escpos.impl.daruma import DR700
     from satextrato import ExtratoCFeVenda
 
@@ -98,23 +98,28 @@ Para executar os testes de emissão dos extratos em impressoras conectadas
 à portas seriais, ou em impressoras USB a partir de virtualizadores de portas
 seriais:
 
-.. sourcecode:: shell
+.. sourcecode:: shell-session
 
     $ python setup.py test -a \
             "--escpos-impl=escpos.impl.daruma.DR700 "\
             "--escpos-if=serial "\
-            "--serial-port=/dev/ttyS7"
+            "--escpos-if-settings=\"/dev/ttyS7:9600,8,1,N\""
 
 Para executar os testes em uma impressora conectada à rede, via TCP/IP no
 endereço ``192.168.1.200`` porta ``9100``:
 
-.. sourcecode:: shell
+.. sourcecode:: shell-session
 
     $ python setup.py test -a \
             "--escpos-impl=escpos.impl.epson.TMT20 "\
             "--escpos-if=network "\
-            "--network-host=192.168.1.200 "\
-            "--network-port=9100 "
+            "--escpos-if-settings=\"192.168.1.200:9100\""
+
+Para mais opções sobre testes invoque a ajuda e procure por "custom options":
+
+.. sourcecode:: shell-session
+
+    $ python setup.py test -a --help
 
 ..
     Sphinx Documentation: Substitutions at
