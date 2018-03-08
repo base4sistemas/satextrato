@@ -26,10 +26,12 @@ from satcomum import br
 from satcomum import ersat
 from satcomum import util
 
-from .config import ZERO
-from .config import conf
+from . import config
 from .base import _bordas
 from .base import ExtratoCFe
+
+
+ZERO = Decimal()
 
 
 class ExtratoCFeVenda(ExtratoCFe):
@@ -112,7 +114,7 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.normal()
         self.esquerda()
 
-        if conf.itens_modo_condensado:
+        if config.cupom.itens_modo_condensado:
             self.condensado() # liga
 
         largura = self._colunas
@@ -132,7 +134,7 @@ class ExtratoCFeVenda(ExtratoCFe):
         for linha in linhas:
             self.texto(linha)
 
-        if conf.itens_modo_condensado:
+        if config.cupom.itens_modo_condensado:
             self.condensado() # desliga
 
         return self
@@ -199,7 +201,7 @@ class ExtratoCFeVenda(ExtratoCFe):
                     br.as_cnpjcpf(documento)))
 
             nome = self.root.findtext('./infCFe/dest/xNome')
-            if nome and conf.exibir_nome_consumidor:
+            if nome and config.cupom.exibir_nome_consumidor:
                 self.quebrar(nome)
 
             self.separador()
@@ -508,5 +510,8 @@ class ExtratoCFeVenda(ExtratoCFe):
 
         self.avanco(2)
         self.impressora.qrcode(ersat.dados_qrcode(self._tree),
-                qrcode_module_size=conf.qrcode.tamanho_modulo,
-                qrcode_ecc_level=conf.qrcode.nivel_correcao)
+                qrcode_module_size=config.qrcode.tamanho_modulo,
+                qrcode_ecc_level=config.qrcode.nivel_correcao)
+
+        self.avanco()
+        self.qrcode_mensagem()

@@ -1,5 +1,6 @@
 __pycache__/
 .cache/
+.pytest_cache/
 
 /build/
 /dist/
@@ -11,3 +12,5 @@ __pycache__/
 *.pyd
 *.sublime-workspace
 
+# extrato.cfg gerado e editável durante as seções de testes
+extrato.cfg

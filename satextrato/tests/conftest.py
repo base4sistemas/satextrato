@@ -18,6 +18,7 @@
 #
 
 import importlib
+import os
 import sys
 
 import pytest
@@ -84,6 +85,19 @@ class InterfaceFactory(object):
         from escpos import SerialConnection
         conn = SerialConnection.create(settings)
         return conn
+
+
+@pytest.fixture(scope='module')
+def configurado(request):
+    def fin():
+        # não exclua 'extrato.cfg';
+        # é útil poder editá-lo entre as execuções dos testes
+        pass
+
+    from satextrato import config
+    arquivo = os.path.join(os.path.abspath('.'), 'extrato.cfg')
+    config.configurar(arquivo=arquivo)
+
 
 
 @pytest.fixture(scope='module')

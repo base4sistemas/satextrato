@@ -17,6 +17,8 @@
 # limitations under the License.
 #
 
+from __future__ import absolute_import
+
 import textwrap
 import warnings
 import xml.etree.ElementTree as ET
@@ -30,79 +32,7 @@ from satcomum import br
 from satcomum import constantes
 from satcomum import util
 
-from .config import conf
-
-
-def _bordas(esquerda, direita, largura=48, espacamento_minimo=4,
-        favorecer_direita=True):
-    """Prepara duas strings para serem impressas alinhadas às bordas opostas da
-    mídia, os textos da esquerda (borda esquerda) e da direita (borda direita),
-    respeitando uma largura e espaçamento mínimo determinados.
-
-    .. sourcecode:: python
-
-        >>> _bordas('a', 'b')
-        'a                                              b'
-
-        >>> esquerda = 'a' * 30
-        >>> direita = 'b' * 30
-        >>> _bordas(esquerda, direita)
-        'aaaaaaaaaaaaaaaaaaaaaa    bbbbbbbbbbbbbbbbbbbbbb'
-
-        >>> esquerda = 'Gazeta publica hoje breve nota de faxina na quermesse'
-        >>> direita = 'Um pequeno jabuti xereta viu dez cegonhas felizes'
-        >>> _bordas(esquerda, direita, espacamento_minimo=1)
-        'Gazeta publica hoje bre viu dez cegonhas felizes'
-
-
-    :param str esquerda: O texto a ser exibido à esquerda. Se o texto não
-        couber (em relação à largura e ao espaçamento mínimo) será exibida
-        apenas a porção mais à esquerda desse texto, sendo cortados (não
-        impressos) os caracteres do final do texto.
-
-    :param str direita: O texto à ser exibido à direita. Se o texto da direita
-        não couber (em relação à largura e ao espaçamento mínimo) será exibida
-        apenas porção mais à direita desse texto, sendo cortados (não impressos)
-        os caracteres do início do texto.
-
-    :param int largura: Largura em caracteres a considerar ao calcular o vão
-        entre os textos da esquerda e direita. O padrão é 48, já que é a
-        largura mais comum entre as impressoras térmicas de bobina quando
-        imprimindo com a fonte normal.
-
-    :param int espacamento_minimo: Opcional. Determina o número de espaços
-        mínimo a ser deixado entre os textos da esquerda e direita. O padrão
-        são quatro espaços.
-
-    :param bool favorecer_direita: Opcional. Determina se o texto da direita
-        deverá ser favorecido com um espaço maior quando houver diferença
-        (sobra) entre os textos da esquerda e direita em relação ao espaçamento
-        mínimo determinado. O padrão é favorecer o texto da direita, já que é
-        normalmente o dado relevante, como um valor ou percentual.
-
-    :returns: Uma string contendo os textos da esquerda e direita encaixados na
-        largura determinada, respeitando um espaçamento mínimo entre eles. Se
-        necessário os textos serão truncados para respeitar a largura (o texto
-        da esquerda será truncado no final e o texto da direita será truncado
-        no início).
-
-    :rtype: str
-
-    """
-    espacamento = largura - (len(esquerda) + len(direita))
-    if espacamento < espacamento_minimo:
-        espacamento = espacamento_minimo
-        cpmax = int((largura - espacamento) / 2)
-        cpmax_esq, cpmax_dir = cpmax, cpmax
-        diferenca = largura - (espacamento + cpmax * 2)
-        if diferenca > 0:
-            if favorecer_direita:
-                cpmax_dir += diferenca
-            else:
-                cpmax_esq += diferenca
-        esquerda = esquerda[:cpmax_esq]
-        direita = direita[-cpmax_dir:]
-    return '%s%s%s' % (esquerda, ' ' * espacamento, direita)
+from . import config
 
 
 class ExtratoCFe(object):
@@ -137,11 +67,11 @@ class ExtratoCFe(object):
     @property
     def _colunas(self):
         if self._flag_condensado:
-            num_colunas = conf.colunas.condensado
+            num_colunas = self.impressora.feature.columns.condensed
         elif self._flag_expandido:
-            num_colunas = conf.colunas.expandido
+            num_colunas = self.impressora.feature.columns.expanded
         else:
-            num_colunas = conf.colunas.normal
+            num_colunas = self.impressora.feature.columns.normal
         return num_colunas
 
 
@@ -302,7 +232,7 @@ class ExtratoCFe(object):
             self.texto('= T E S T E =')
             self.avanco()
             for i in xrange(3):
-                self.texto('>' * conf.colunas.normal)
+                self.texto('>' * self._colunas)
             self.italico()
 
 
@@ -324,19 +254,41 @@ class ExtratoCFe(object):
         :param chave: Instância de :class:`satcomum.ersat.ChaveCFeSAT`.
         """
         code128_params = dict(
-                barcode_height=conf.code128_altura,
+                barcode_height=config.code128.altura,
                 barcode_width=escpos.barcode.BARCODE_NORMAL_WIDTH,
                 barcode_hri=escpos.barcode.BARCODE_HRI_NONE)
 
-        if conf.code128_quebrar:
-            # imprime o Code128 da chave do CF-e em duas partes de 22 digitos
-            partes = chave.partes(2)
-            self.impressora.code128(partes[0], **code128_params)
-            self.avanco()
-            self.impressora.code128(partes[1], **code128_params)
+        if config.code128.ignorar:
+            return
+
+        if config.code128.truncar:
+            digitos = ''.join(chave.partes())[:config.code128.truncar_tamanho]
+            self.impressora.code128(digitos, **code128_params)
+
+        elif config.code128.quebrar:
+            partes = _quebrar_chave(chave, config.code128.quebrar_partes)
+            for n_parte, parte in enumerate(partes, 1):
+                self.impressora.code128(parte, **code128_params)
+                if n_parte < len(partes):
+                    self.avanco()
         else:
             partes = chave.partes(1)
             self.impressora.code128(partes[0], **code128_params)
+
+
+    def qrcode_mensagem(self):
+        mensagem = config.qrcode.mensagem.strip()
+        if not mensagem:
+            return
+
+        if config.qrcode.mensagem_modo_condensado:
+            self.condensado()
+        self.centro()
+        for linha in textwrap.wrap(mensagem, self._colunas):
+            self.texto(linha)
+        self.esquerda()
+        if config.qrcode.mensagem_modo_condensado:
+            self.condensado()
 
 
     def fim_documento(self):
@@ -347,20 +299,19 @@ class ExtratoCFe(object):
         self.avanco()
         self.separador()
 
-        if conf.nota_rodape.esquerda or conf.nota_rodape.direita:
+        if config.rodape.esquerda or config.rodape.direita:
             self.condensado()
-            self.bordas(conf.nota_rodape.esquerda, conf.nota_rodape.direita)
+            self.bordas(config.rodape.esquerda, config.rodape.direita)
             self.condensado()
 
-        if conf.cortar_documento and \
-                self.impressora.hardware_features.get(
-                        escpos.feature.CUTTER, False):
-            if conf.avancar_linhas > 0:
-                self.avanco(conf.avancar_linhas)
-            self.impressora.cut(partial=conf.cortar_parcialmente)
-
-        elif conf.avancar_linhas > 0:
-            self.avanco(conf.avancar_linhas)
+        if self.impressora.feature.cutter and config.cupom.cortar_documento:
+            if config.cupom.avancar_linhas > 0:
+                self.avanco(config.cupom.avancar_linhas)
+            self.impressora.cut(partial=config.cupom.cortar_parcialmente)
+        else:
+            # impressora não possui guilhotina ou não é para cortar o documento
+            if config.cupom.avancar_linhas > 0:
+                self.avanco(config.cupom.avancar_linhas)
 
 
     def cabecalho(self):
@@ -430,3 +381,88 @@ class ExtratoCFe(object):
 
     def corpo(self):
         raise NotImplementedError()
+
+
+def _bordas(esquerda, direita, largura=48, espacamento_minimo=4,
+        favorecer_direita=True):
+    """Prepara duas strings para serem impressas alinhadas às bordas opostas da
+    mídia, os textos da esquerda (borda esquerda) e da direita (borda direita),
+    respeitando uma largura e espaçamento mínimo determinados.
+
+    .. sourcecode:: python
+
+        >>> _bordas('a', 'b')
+        'a                                              b'
+
+        >>> esquerda = 'a' * 30
+        >>> direita = 'b' * 30
+        >>> _bordas(esquerda, direita)
+        'aaaaaaaaaaaaaaaaaaaaaa    bbbbbbbbbbbbbbbbbbbbbb'
+
+        >>> esquerda = 'Gazeta publica hoje breve nota de faxina na quermesse'
+        >>> direita = 'Um pequeno jabuti xereta viu dez cegonhas felizes'
+        >>> _bordas(esquerda, direita, espacamento_minimo=1)
+        'Gazeta publica hoje bre viu dez cegonhas felizes'
+
+
+    :param str esquerda: O texto a ser exibido à esquerda. Se o texto não
+        couber (em relação à largura e ao espaçamento mínimo) será exibida
+        apenas a porção mais à esquerda desse texto, sendo cortados (não
+        impressos) os caracteres do final do texto.
+
+    :param str direita: O texto à ser exibido à direita. Se o texto da direita
+        não couber (em relação à largura e ao espaçamento mínimo) será exibida
+        apenas porção mais à direita desse texto, sendo cortados (não impressos)
+        os caracteres do início do texto.
+
+    :param int largura: Largura em caracteres a considerar ao calcular o vão
+        entre os textos da esquerda e direita. O padrão é 48, já que é a
+        largura mais comum entre as impressoras térmicas de bobina quando
+        imprimindo com a fonte normal.
+
+    :param int espacamento_minimo: Opcional. Determina o número de espaços
+        mínimo a ser deixado entre os textos da esquerda e direita. O padrão
+        são quatro espaços.
+
+    :param bool favorecer_direita: Opcional. Determina se o texto da direita
+        deverá ser favorecido com um espaço maior quando houver diferença
+        (sobra) entre os textos da esquerda e direita em relação ao espaçamento
+        mínimo determinado. O padrão é favorecer o texto da direita, já que é
+        normalmente o dado relevante, como um valor ou percentual.
+
+    :returns: Uma string contendo os textos da esquerda e direita encaixados na
+        largura determinada, respeitando um espaçamento mínimo entre eles. Se
+        necessário os textos serão truncados para respeitar a largura (o texto
+        da esquerda será truncado no final e o texto da direita será truncado
+        no início).
+
+    :rtype: str
+
+    """
+    espacamento = largura - (len(esquerda) + len(direita))
+    if espacamento < espacamento_minimo:
+        espacamento = espacamento_minimo
+        cpmax = int((largura - espacamento) / 2)
+        cpmax_esq, cpmax_dir = cpmax, cpmax
+        diferenca = largura - (espacamento + cpmax * 2)
+        if diferenca > 0:
+            if favorecer_direita:
+                cpmax_dir += diferenca
+            else:
+                cpmax_esq += diferenca
+        esquerda = esquerda[:cpmax_esq]
+        direita = direita[-cpmax_dir:]
+    return '%s%s%s' % (esquerda, ' ' * espacamento, direita)
+
+
+def _quebrar_chave(chave, quebrar_partes):
+    # chave: satcomum.ersat.ChaveCFeSAT
+    # quebrar_partes: list[int]
+    # Lista <quebrar_partes> deve possuir apenas números pares
+    digitos = ''.join(chave.partes())
+    partes = []
+    a = 0
+    for n in quebrar_partes:
+        partes.append(digitos[a:a+n])
+        a += n
+    return partes

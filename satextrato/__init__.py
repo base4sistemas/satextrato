@@ -17,11 +17,12 @@
 # limitations under the License.
 #
 
+import logging
 import os
 
 __version__ = '0.1'
 
-from .config import ConfiguracoesExtrato
-from .config import conf
+logging.getLogger('satextrato').addHandler(logging.NullHandler())
+
 from .venda import ExtratoCFeVenda
 from .cancelamento import ExtratoCFeCancelamento

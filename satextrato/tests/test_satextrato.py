@@ -18,6 +18,7 @@
 #
 
 import io
+import os
 import sys
 
 import pytest
@@ -27,6 +28,7 @@ from satextrato.cancelamento import ExtratoCFeCancelamento
 
 
 def test_extrato_venda(
+        configurado,
         xml_venda,
         escpos_impl,
         escpos_interface):
@@ -37,6 +39,7 @@ def test_extrato_venda(
 
 
 def test_extrato_venda_resumido(
+        configurado,
         xml_venda,
         escpos_impl,
         escpos_interface):
@@ -47,6 +50,7 @@ def test_extrato_venda_resumido(
 
 
 def test_extrato_cancelamento(
+        configurado,
         xml_venda,
         xml_cancelamento,
         escpos_impl,

@@ -17,184 +17,209 @@
 # limitations under the License.
 #
 
-from decimal import Decimal
+import logging
+import os
 
-import escpos.barcode
+from ConfigParser import SafeConfigParser
+from collections import namedtuple
 
-ZERO = Decimal(0)
-
-
-class LarguraBobina(object):
-    # FIXME: A implementação de ESC/POS deverá saber quais os valores para os
-    #        modos normal, condensado e expandido;
-    #
-    normal = 48
-    """
-    Número de caracteres por linha no modo de impressão normal.
-    """
-
-    condensado = 57
-    """
-    Número de caracteres por linha no modo de impressão condensado.
-    """
-
-    expandido = 24
-    """
-    Número de caracteres por linha no modo impressão expandido.
-    """
+from escpos import barcode
 
 
-class ParametrosQRCode(object):
-    tamanho_modulo = escpos.barcode.QRCODE_MODULE_SIZE_4
-    """
-    Determina o tamanho do módulo QRCode.
-    Valor padrão é :attr:`escpos.barcode.QRCODE_MODULE_SIZE_4`
-    """
+SECAO_QRCODE = 'qrcode'
+SECAO_CODE128 = 'code128'
+SECAO_RODAPE = 'rodape'
+SECAO_CUPOM = 'cupom'
 
-    nivel_correcao = escpos.barcode.QRCODE_ERROR_CORRECTION_L
-    """
-    Determina o nível de correção (ECC) do QRCode.
-    Valor padrão é :attr:`escpos.barcode.QRCODE_ERROR_CORRECTION_L`
-    """
+CONFIG_DIR = os.path.join(os.path.expanduser('~'), 'satcfe')
+
+CONFIG_ARQUIVO_PADRAO = os.path.join(CONFIG_DIR, 'extrato.cfg')
+
+_TAMANHO_CHAVE_CFESAT = 44
+
+_CupomConf = namedtuple('_CupomConf', [
+        'itens_modo_condensado',
+        'avancar_linhas',
+        'cortar_documento',
+        'cortar_parcialmente',
+        'exibir_nome_consumidor',])
+
+_QRCodeConf = namedtuple('_QRCodeConf', [
+        'tamanho_modulo',
+        'nivel_correcao',
+        'nome_aplicativo',
+        'mensagem',
+        'mensagem_modo_condensado',])
+
+_Code128Conf = namedtuple('_Code128Conf', [
+        'ignorar',
+        'altura',
+        'quebrar',
+        'quebrar_partes',
+        'truncar',
+        'truncar_tamanho',])
+
+_RodapeConf = namedtuple('_RodapeConf', ['direita', 'esquerda'])
+
+cupom = None
+qrcode = None
+code128 = None
+rodape = None
+
+logger = logging.getLogger('satextrato.config')
 
 
-class NotaRodape(object):
+def configurar(arquivo=None):
+    """Esta função dá ao aplicativo usuário uma chance de definir onde o arquivo
+    de configurações deve existir. Chamadas subsequentes à esta função não terão
+    efeito, a menos que seja invocada a função :func:`reconfigurar`.
 
-    esquerda = 'Extrato SAT-CF-e'
-    """
-    Texto alinha à borda esquerda da bobina.
-    """
-
-    direita = 'http://git.io/vJRRk'
-    """
-    Texto alinhado à borda direita da bobina.
-
-    .. todo::
-
-        Usar https://github.com/blog/985-git-io-github-url-shortener
-    """
-
-
-class ConfiguracoesExtrato(object):
-
-    colunas = LarguraBobina()
-    """
-    Referência aos atributos que determinam a largura da bobina,
-    classe :class:`LarguraBobina` ou implementação especializada.
-    """
-
-    qrcode = ParametrosQRCode()
-    """
-    Referência aos atributos que determinam os parâmetros do QRCode,
-    classe :class:`ParametrosQRCode` ou implementação especializada.
-    """
-
-    nota_rodape = NotaRodape()
-    """
-    Referência aos atributos que serão usados na impressão da nota de rodapé,
-    classe :class:`NotaRodape` ou implementação especializada.
-    """
-
-    itens_modo_condensado = True
-    """
-    Indica se os dados dos itens, no corpo do Extrato do CF-e-SAT deverão ser
-    impressos em modo condensado. Se não, serão impressos em modo normal.
-    """
-
-    avancar_linhas = 10
-    """Número de linhas em branco a avançar ao final do Extrato do CF-e-SAT.
-
-    .. note::
-
-        Esta configuração será considerada mesmo se :attr:`cortar_documento`
-        estiver configurado como ``True``, avançando um número ``n`` de linhas
-        em branco antes de realizar o corte.
+    :param str arquivo: Caminho completo para o arquivo de configurações.
 
     """
+    global cupom
+    global qrcode
+    global code128
+    global rodape
 
-    cortar_documento = True
-    """Se o documento deve ser cortado ao ser concluído. Esta configuração não
-    terá efeito se o equipamento não possuir uma guilhotina.
+    if all([cupom, qrcode, code128, rodape]):
+        return
 
-    .. note::
+    arquivo = arquivo or CONFIG_ARQUIVO_PADRAO
+    _garantir_diretorio(arquivo)
 
-        Algumas impressoras possuem a guilhotina muito próxima do cabeçote de
-        impressão, fazendo com que o corte elimine dados que ainda estão
-        abaixo da linha de corte. Use :attr:`avancar_linhas` para determinar o
-        número de linhas em branco a avançar antes de acionar a guilhotina.
+    parser = SafeConfigParser()
+    modificado = False
 
-    """
+    if os.path.isfile(arquivo):
+        with open(arquivo, 'r') as fp:
+            parser.readfp(fp)
 
-    cortar_parcialmente = True
-    """Ao cortar o documento (:attr:`cortar_documento`), esta propriedade
-    indicará se o corte deverá ser parcial ou total.
-    """
+    if not parser.has_section(SECAO_QRCODE):
+        parser.add_section(SECAO_QRCODE)
+        parser.set(SECAO_QRCODE, 'tamanho_modulo', str(barcode.QRCODE_MODULE_SIZE_4))
+        parser.set(SECAO_QRCODE, 'nivel_correcao', barcode.QRCODE_ERROR_CORRECTION_L)
+        parser.set(SECAO_QRCODE, 'nome_aplicativo', 'De Olho Na Nota')
+        parser.set(SECAO_QRCODE, 'mensagem', 'Consulte o QRCode pelo '
+                'aplicativo %(nome_aplicativo)s, disponivel na '
+                'AppStore (Apple) e PlayStore (Android)')
+        parser.set(SECAO_QRCODE, 'mensagem_modo_condensado', 'yes')
+        modificado = True
 
-    exibir_nome_consumidor = False
-    """
-    Indica se o nome do consumidor deve ou não ser exibido no Grupo II
-    "Dados do Consumidor" do corpo do Extrato do CF-e-SAT. Esta configuração
-    será considerada apenas se o elemento ``xNome`` (E04) existir no CF-e.
+    if not parser.has_section(SECAO_CODE128):
+        parser.add_section(SECAO_CODE128)
+        parser.set(SECAO_CODE128, 'ignorar', 'no')
+        parser.set(SECAO_CODE128, 'altura', '56')
+        parser.set(SECAO_CODE128, 'quebrar', 'no')
+        parser.set(SECAO_CODE128, 'quebrar_partes', '22,22')
+        parser.set(SECAO_CODE128, 'truncar', 'no')
+        parser.set(SECAO_CODE128, 'truncar_tamanho', '44')
+        modificado = True
 
-    .. warning::
+    if not parser.has_section(SECAO_RODAPE):
+        parser.add_section(SECAO_RODAPE)
+        parser.set(SECAO_RODAPE, 'direita', 'http://git.io/vJRRk')
+        parser.set(SECAO_RODAPE, 'esquerda', 'Extrato CF-e-SAT')
+        modificado = True
 
-        A documentação para impressão do extrato não diz que o nome do
-        consumidor deverá ser exibido, mas que apenas o documento (CNPJ/CPF)
-        deverão ser exibidos.
+    if not parser.has_section(SECAO_CUPOM):
+        parser.add_section(SECAO_CUPOM)
+        parser.set(SECAO_CUPOM, 'itens_modo_condensado', 'yes')
+        parser.set(SECAO_CUPOM, 'avancar_linhas', '7')
+        parser.set(SECAO_CUPOM, 'cortar_documento', 'no')
+        parser.set(SECAO_CUPOM, 'cortar_parcialmente', 'no')
+        parser.set(SECAO_CUPOM, 'exibir_nome_consumidor', 'no')
+        modificado = True
 
-    """
+    if modificado:
+        with open(arquivo, 'wb') as fp:
+            parser.write(fp)
 
-    code128_quebrar = False
-    """
-    Indica se o código de barras Code128 que representa a chave do CF-e deverá
-    ser quebrado em 2 partes de 22 dígitos cada ou não. Essa decisão depende
-    do equipamento utilizado para impressão.
-    """
+    cupom=_CupomConf(
+            itens_modo_condensado=parser.getboolean(SECAO_CUPOM, 'itens_modo_condensado'),
+            avancar_linhas=parser.getint(SECAO_CUPOM, 'avancar_linhas'),
+            cortar_documento=parser.getboolean(SECAO_CUPOM, 'cortar_documento'),
+            cortar_parcialmente=parser.getboolean(SECAO_CUPOM, 'cortar_parcialmente'),
+            exibir_nome_consumidor=parser.getboolean(SECAO_CUPOM, 'exibir_nome_consumidor'))
 
-    code128_altura = 96
-    """
-    Indica a altura preferencial em milímetros para código de barras que
-    representa a chave do CF-e. A altura poderá ser ignorada se o equipamento
-    utilizado para impressão não suportar esta configuração.
+    qrcode=_QRCodeConf(
+            tamanho_modulo=parser.getint(SECAO_QRCODE, 'tamanho_modulo'),
+            nivel_correcao=parser.get(SECAO_QRCODE, 'nivel_correcao'),
+            nome_aplicativo=parser.get(SECAO_QRCODE, 'nome_aplicativo'),
+            mensagem=parser.get(SECAO_QRCODE, 'mensagem'),
+            mensagem_modo_condensado=parser.getboolean(SECAO_QRCODE, 'mensagem_modo_condensado'))
 
-    A altura padrão é ``96``, que é calculado com base na média de 0,125mm por
-    ponto. Assim, ``96`` significa uma altura de aproximadamente 12mm.
-    """
+    code128=_Code128Conf(
+            ignorar=parser.getboolean(SECAO_CODE128, 'ignorar'),
+            altura=parser.getint(SECAO_CODE128, 'altura'),
+            quebrar=parser.getboolean(SECAO_CODE128, 'quebrar'),
+            quebrar_partes=_converter_quebrar_partes(arquivo, parser),
+            truncar=parser.getboolean(SECAO_CODE128, 'truncar'),
+            truncar_tamanho=parser.getint(SECAO_CODE128, 'truncar_tamanho'))
 
-    cliche = None
-    """
-    .. warning::
-
-        Rascunho. Não implementado.
-
-    Dados para o clichê de quaisquer Extratos CF-e-SAT, sejam eles de venda
-    ou de cancelamento. Os dados do clichê serão usados como uma forma de
-    melhorar a formatação das informações. Essas informações, pelo menos em
-    tese, são as mesmas informações que se obteria para produzir o clichê a
-    partir do CF-e.
-
-    Trata-se de uma lista de strings. Cada string será uma linha do clichê que
-    poderá indicar certos aspectos da formatação através de *hashtags*, como
-    por exemplo, ``#negrito``, ``#condensado`` e ``#expandido``.
-
-    Hashtags conflitantes serão ignoradas e vencerá a última hashtag carregada.
-    Por exemplo, se houver a especificação ``#condensado`` e, sem seguida,
-    a hashtag ``#expandido``, será considerado expandido se esta for a última
-    hashtag lida.
-
-    Um exemplo de especificação do clichê::
-
-        conf.cliche = [
-                u'#expandido #negrito BASE4 SISTEMAS',
-                u'#negrito Base4 Sistemas Ltda ME',
-                u'#condensado Rua Armando Gulim, 65',
-                u'#condensado Parque Glória III',
-                u'#condensado Catanduva/SP - CEP 15807-250',]
-
-    """
+    rodape=_RodapeConf(
+            direita=parser.get(SECAO_RODAPE, 'direita'),
+            esquerda=parser.get(SECAO_RODAPE, 'esquerda'))
 
 
-conf = ConfiguracoesExtrato()
-"""
-Variável de módulo utilizada como base para as configurações de impressão.
-"""
+def reconfigurar(arquivo=None):
+    global cupom
+    global qrcode
+    global code128
+    global rodape
+    cupom = None
+    qrcode = None
+    code128 = None
+    rodape = None
+    configurar(arquivo=arquivo)
+
+
+def _converter_quebrar_partes(arquivo, parser):
+    quebrar_partes = parser.get(SECAO_CODE128, 'quebrar_partes')
+    try:
+        partes = [int(p) for p in quebrar_partes.split(',')]
+    except ValueError:
+        raise ValueError('Configuracoes do extrato do CF-e-SAT, Code128 em '
+                'partes deve especificar as partes em valores inteiros, pares '
+                'e separados por virgulas; quebrar_partes={quebrar_partes!r} '
+                '(secao={secao!r}, arquivo={arquivo!r})'.format(
+                        secao=SECAO_CODE128,
+                        arquivo=arquivo,
+                        quebrar_partes=quebrar_partes))
+    else:
+        calculado = sum(partes)
+        if calculado != _TAMANHO_CHAVE_CFESAT:
+            raise ValueError('Configuracoes do extrato do CF-e-SAT, Code128 em '
+                    'partes deve especificar as partes em valores inteiros, '
+                    'pares e separados por virgulas, cuja soma seja igual a '
+                    '{tamanho_esperado!r}, exatamente o numero de digitos da '
+                    'chave do CF-e; quebrar_partes={quebrar_partes!r} '
+                    '(calculado={calculado!r}, secao={secao!r}, '
+                    'arquivo={arquivo!r})'.format(
+                            arquivo=arquivo,
+                            calculado=calculado,
+                            secao=SECAO_CODE128,
+                            quebrar_partes=quebrar_partes,
+                            tamanho_esperado=_TAMANHO_CHAVE_CFESAT))
+
+    # todos os números inteiros em <partes> devem ser pares
+    for i, n in enumerate(partes, 1):
+        if n <= 0 or n % 2 != 0:
+            raise ValueError('Configuracoes do extrato do CF-e-SAT, Code128 em '
+                    'partes e invalido: especifique apenas numeros inteiros e '
+                    'pares, cuja soma seja a igual {tamamho_esperado!r}: '
+                    'quebrar_partes={quebrar_partes!r} (secao={secao!r}, '
+                    'arquivo={arquivo!r})'.format(
+                            arquivo=arquivo,
+                            secao=SECAO_CODE128,
+                            quebrar_partes=quebrar_partes,
+                            tamanho_esperado=_TAMANHO_CHAVE_CFESAT))
+
+    return partes
+
+
+def _garantir_diretorio(arquivo):
+    caminho, _ = os.path.split(arquivo)
+    if not os.path.isdir(caminho):
+        logger.warning('criando diretorio de configuracoes para: %r', arquivo)
+        os.makedirs(caminho)
