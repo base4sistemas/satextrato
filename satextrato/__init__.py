@@ -20,7 +20,7 @@
 import logging
 import os
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 logging.getLogger('satextrato').addHandler(logging.NullHandler())
 
