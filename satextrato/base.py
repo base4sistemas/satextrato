@@ -16,12 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import textwrap
-import warnings
 import xml.etree.ElementTree as ET
+
+from six.moves import range
 
 from unidecode import unidecode
 
@@ -30,9 +32,8 @@ import escpos.feature
 
 from satcomum import br
 from satcomum import constantes
-from satcomum import util
 
-from . import config
+from .config import padrao as config_padrao
 
 
 class ExtratoCFe(object):
@@ -45,24 +46,30 @@ class ExtratoCFe(object):
     :class:`~satextrato.cancelamento.ExtratoCFeCancelamento`.
     """
 
-    def __init__(self, fp, impressora):
+    def __init__(self, fp, impressora, config=None):
         """Inicia uma instância de :class:`ExtratoCFe`.
 
-        :param fp: Um objeto *file-like* para o documento XML que contém o CF-e.
-        :param impressora: Um objeto :class:`escpos.impl.epson.GenericESCPOS`
-            ou especialização.
+        :param fp: Um *file object* para o documento XML que contém o CF-e.
+
+        :param impressora: Um instância (ou subclasse, especialização) de
+            :class:`escpos.impl.epson.GenericESCPOS` usado para efetivamente
+            imprimir o extrato.
+
+        :param config: Opcional.
+            Uma instância de :class:`satextrato.config.Configuracoes`.
+            Se não informado, serão usados valores padrão.
 
         """
         super(ExtratoCFe, self).__init__()
+        self._config = config or config_padrao()
         self._tree = ET.parse(fp)
-        self.root = self._tree.getroot() # referência para o elemento `CFe`
+        self.root = self._tree.getroot()
         self.impressora = impressora
 
         self._flag_negrito = False
         self._flag_italico = False
         self._flag_expandido = False
-        self._flag_condensado= False
-
+        self._flag_condensado = False
 
     @property
     def _colunas(self):
@@ -74,17 +81,13 @@ class ExtratoCFe(object):
             num_colunas = self.impressora.feature.columns.normal
         return num_colunas
 
-
     @property
     def is_ambiente_testes(self):
         """Indica se o CF-e-SAT foi emitido em "ambiente de testes".
+        Considera como emitido em ambiente de testes quando:
 
-        Embora o Manual de Orientação para emissão dos extratos do CF-e-SAT não
-        seja claro quanto ao que significa "estar em condição de teste", esta
-        implementação irá assumir "condição de testes" quando:
-
-        * elemento B10 ``tpAmb`` for ``2`` (ambiente de testes) **OU**
-        * elemento B12 ``signAC`` possuir a assinatura de teste, indicada pela
+        * Elemento B10 ``tpAmb`` for ``2`` (ambiente de testes) ou
+        * Elemento B12 ``signAC`` possuir a assinatura de teste, indicada pela
           constante :attr:`satcomum.constantes.ASSINATURA_AC_TESTE`.
 
         .. note::
@@ -92,24 +95,26 @@ class ExtratoCFe(object):
             O CF-e de cancelamento não possui o elemento ``tpAmb``, conforme
             descrito na ER SAT, item 4.2.3 **Layout do CF-e de cancelamento**.
 
-        :raises ValueError: Se o documento XML não identificar um CF-e-SAT de
-            venda ou cancelamento.
+        :raises ValueError: Se o documento XML não for identificado como um
+            CF-e-SAT de venda ou cancelamento.
 
         """
         signAC = self.root.findtext('./infCFe/ide/signAC')
 
         if self.root.tag == constantes.ROOT_TAG_VENDA:
             tpAmb = self.root.findtext('./infCFe/ide/tpAmb')
-            return tpAmb == constantes.B10_TESTES or \
-                    signAC == constantes.ASSINATURA_AC_TESTE
+            return (tpAmb == constantes.B10_TESTES
+                    or signAC == constantes.ASSINATURA_AC_TESTE)
 
         elif self.root.tag == constantes.ROOT_TAG_CANCELAMENTO:
             # CF-e-SAT de cancelamento não possui `tpAmb`
             return signAC == constantes.ASSINATURA_AC_TESTE
 
-        raise ValueError('Documento nao parece ser um CF-e-SAT, '
-                'root tag {!r}'.format(self.root.tag))
-
+        raise ValueError(
+                (
+                    'Documento nao parece ser um CF-e-SAT; root tag: {!r}'
+                ).format(self.root.tag)
+            )
 
     def imprimir(self):
         self.cabecalho()
@@ -117,16 +122,13 @@ class ExtratoCFe(object):
         self.rodape()
         self.fim_documento()
 
-
     def centro(self):
         self.impressora.justify_center()
         return self
 
-
     def esquerda(self):
         self.impressora.justify_left()
         return self
-
 
     def normal(self):
         if self._flag_negrito:
@@ -138,42 +140,41 @@ class ExtratoCFe(object):
         if self._flag_condensado:
             self.condensado()
 
-
     def negrito(self):
         self._flag_negrito = not self._flag_negrito
         self.impressora.set_emphasized(self._flag_negrito)
         return self
 
-
     def italico(self):
-        warnings.warn('Estilo "italico" ainda nao disponivel via PyESCPOS',
-                stacklevel=2)
         self._flag_italico = not self._flag_italico
         return self
-
 
     def expandido(self):
         self._flag_expandido = not self._flag_expandido
         self.impressora.set_expanded(self._flag_expandido)
         return self
 
-
     def condensado(self):
         self._flag_condensado = not self._flag_condensado
         self.impressora.set_condensed(self._flag_condensado)
         return self
 
-
-    def bordas(self, texto_esquerda, texto_direita,
+    def bordas(
+            self,
+            texto_esquerda,
+            texto_direita,
             colunas=None,
-            espacamento_minimo=4):
+            espacamento_minimo=4
+            ):
         largura = colunas or self._colunas
-        texto = _bordas(texto_esquerda, texto_direita,
+        texto = _bordas(
+                texto_esquerda,
+                texto_direita,
                 largura=largura,
-                espacamento_minimo=espacamento_minimo)
+                espacamento_minimo=espacamento_minimo
+            )
         self.texto(texto)
         return self
-
 
     def quebrar(self, texto, colunas=None):
         largura = colunas or self._colunas
@@ -185,28 +186,24 @@ class ExtratoCFe(object):
                 self.texto(linha)
         return self
 
-
     def avanco(self, linhas=1):
         self.impressora.lf(lines=linhas)
         return self
 
-
     def texto(self, texto):
-        self.impressora.text(unidecode(util.forcar_unicode(texto)))
+        self.impressora.text(unidecode(texto))
         return self
-
 
     def separador(self, caracter='-', colunas=None):
         largura = colunas or self._colunas
         self.texto('-' * largura)
         return self
 
-
     def indicacao_de_teste(self):
-        """Imprime indicação de teste se o CF-e estiver em "condição de teste".
-        Caso contrário, não faz nada. A indicação de teste, conforme o Manual de
-        Orientação deverá ser impressa em itálico (note a linha em branco acima
-        e abaixo da inscrição "TESTE"):
+        """Imprime indicação de teste se o CF-e estiver em "condição de
+        teste". Caso contrário, não faz nada. A indicação de teste,
+        conforme o Manual de Orientação deverá ser impressa em itálico
+        (note a linha em branco acima e abaixo da inscrição "TESTE"):
 
         .. sourcecode:: text
 
@@ -231,10 +228,9 @@ class ExtratoCFe(object):
             self.avanco()
             self.texto('= T E S T E =')
             self.avanco()
-            for i in xrange(3):
+            for i in range(3):
                 self.texto('>' * self._colunas)
             self.italico()
-
 
     def numero_extrato(self):
         """
@@ -247,26 +243,27 @@ class ExtratoCFe(object):
             return '0' * 6
         return self.root.findtext('./infCFe/ide/nCFe')
 
-
     def chave_cfe_code128(self, chave):
         """Imprime o código de barras padrão Code128 para a chave do CF-e.
 
         :param chave: Instância de :class:`satcomum.ersat.ChaveCFeSAT`.
         """
-        code128_params = dict(
-                barcode_height=config.code128.altura,
-                barcode_width=escpos.barcode.BARCODE_NORMAL_WIDTH,
-                barcode_hri=escpos.barcode.BARCODE_HRI_NONE)
-
-        if config.code128.ignorar:
+        if self._config.code128.ignorar:
             return
 
-        if config.code128.truncar:
-            digitos = ''.join(chave.partes())[:config.code128.truncar_tamanho]
+        code128_params = dict(
+                barcode_height=self._config.code128.altura,
+                barcode_width=escpos.barcode.BARCODE_NORMAL_WIDTH,
+                barcode_hri=escpos.barcode.BARCODE_HRI_NONE
+            )
+
+        if self._config.code128.truncar:
+            tamanho = self._config.code128.truncar_tamanho
+            digitos = ''.join(chave.partes())[:tamanho]
             self.impressora.code128(digitos, **code128_params)
 
-        elif config.code128.quebrar:
-            partes = _quebrar_chave(chave, config.code128.quebrar_partes)
+        elif self._config.code128.quebrar:
+            partes = _quebrar_chave(chave, self._config.code128.quebrar_partes)
             for n_parte, parte in enumerate(partes, 1):
                 self.impressora.code128(parte, **code128_params)
                 if n_parte < len(partes):
@@ -275,21 +272,19 @@ class ExtratoCFe(object):
             partes = chave.partes(1)
             self.impressora.code128(partes[0], **code128_params)
 
-
     def qrcode_mensagem(self):
-        mensagem = config.qrcode.mensagem.strip()
+        mensagem = self._config.qrcode.mensagem.strip()
         if not mensagem:
             return
 
-        if config.qrcode.mensagem_modo_condensado:
+        if self._config.qrcode.mensagem_modo_condensado:
             self.condensado()
         self.centro()
         for linha in textwrap.wrap(mensagem, self._colunas):
             self.texto(linha)
         self.esquerda()
-        if config.qrcode.mensagem_modo_condensado:
+        if self._config.qrcode.mensagem_modo_condensado:
             self.condensado()
-
 
     def fim_documento(self):
         """Encerra o documento, imprimindo o rodapé (se houver) e avançando ou
@@ -299,20 +294,25 @@ class ExtratoCFe(object):
         self.avanco()
         self.separador()
 
-        if config.rodape.esquerda or config.rodape.direita:
+        conf_cupom = self._config.cupom
+        conf_rodape = self._config.rodape
+
+        if conf_rodape.esquerda or conf_rodape.direita:
             self.condensado()
-            self.bordas(config.rodape.esquerda, config.rodape.direita)
+            self.bordas(conf_rodape.esquerda, conf_rodape.direita)
             self.condensado()
 
-        if self.impressora.feature.cutter and config.cupom.cortar_documento:
-            if config.cupom.avancar_linhas > 0:
-                self.avanco(config.cupom.avancar_linhas)
-            self.impressora.cut(partial=config.cupom.cortar_parcialmente)
+        if self.impressora.feature.cutter and conf_cupom.cortar_documento:
+            if conf_cupom.avancar_linhas > 0:
+                self.avanco(conf_cupom.avancar_linhas)
+            self.impressora.cut(
+                    partial=conf_cupom.cortar_parcialmente,
+                    feed=conf_cupom.cortar_avanco
+                )
         else:
             # impressora não possui guilhotina ou não é para cortar o documento
-            if config.cupom.avancar_linhas > 0:
-                self.avanco(config.cupom.avancar_linhas)
-
+            if conf_cupom.avancar_linhas > 0:
+                self.avanco(conf_cupom.avancar_linhas)
 
     def cabecalho(self):
 
@@ -329,24 +329,24 @@ class ExtratoCFe(object):
         complemento = enderEmit.findtext('xCpl')
         bairro = enderEmit.findtext('xBairro')
 
-        if numero: # número não é obrigatório
+        if numero:  # número não é obrigatório
             logradouro = u'{}, {}'.format(logradouro, numero)
 
-        if complemento: # complemento não é obrigatório
+        if complemento:  # complemento não é obrigatório
             # faz um esforço para manter o complemento na mesma linha que o
             # logradouro/número se couber, senão o complemento irá usar uma
             # linha exclusiva...
             if len(logradouro) + len(complemento) < self._colunas:
                 # ok, mantém o complemento na mesma linha que o logradouro
                 logradouro = u'{}, {}'.format(logradouro, complemento)
-                complemento = '' # ignora a linha que deveria conter o xCpl
+                complemento = ''  # ignora a linha que deveria conter o xCpl
 
         cidade = u'{}/{} CEP: {}'.format(
                 enderEmit.findtext('xMun'),
                 br.uf_pelo_codigo(int(self.root.findtext('./infCFe/ide/cUF'))),
                 br.as_cep(enderEmit.findtext('CEP')))
 
-        partes_endereco = [logradouro, complemento, bairro, cidade,]
+        partes_endereco = [logradouro, complemento, bairro, cidade]
         endereco = u'\r\n'.join([e for e in partes_endereco if e])
 
         cnpj = 'CNPJ: {}'.format(br.as_cnpj(emit.findtext('CNPJ')))
@@ -374,17 +374,20 @@ class ExtratoCFe(object):
 
         self.separador()
 
-
     def rodape(self):
         raise NotImplementedError()
-
 
     def corpo(self):
         raise NotImplementedError()
 
 
-def _bordas(esquerda, direita, largura=48, espacamento_minimo=4,
-        favorecer_direita=True):
+def _bordas(
+        esquerda,
+        direita,
+        largura=48,
+        espacamento_minimo=4,
+        favorecer_direita=True
+        ):
     """Prepara duas strings para serem impressas alinhadas às bordas opostas da
     mídia, os textos da esquerda (borda esquerda) e da direita (borda direita),
     respeitando uma largura e espaçamento mínimo determinados.
@@ -412,8 +415,8 @@ def _bordas(esquerda, direita, largura=48, espacamento_minimo=4,
 
     :param str direita: O texto à ser exibido à direita. Se o texto da direita
         não couber (em relação à largura e ao espaçamento mínimo) será exibida
-        apenas porção mais à direita desse texto, sendo cortados (não impressos)
-        os caracteres do início do texto.
+        apenas porção mais à direita desse texto, sendo cortados (não
+        impressos) os caracteres do início do texto.
 
     :param int largura: Largura em caracteres a considerar ao calcular o vão
         entre os textos da esquerda e direita. O padrão é 48, já que é a
@@ -442,7 +445,7 @@ def _bordas(esquerda, direita, largura=48, espacamento_minimo=4,
     espacamento = largura - (len(esquerda) + len(direita))
     if espacamento < espacamento_minimo:
         espacamento = espacamento_minimo
-        cpmax = int((largura - espacamento) / 2)
+        cpmax = int((largura - espacamento) // 2)
         cpmax_esq, cpmax_dir = cpmax, cpmax
         diferenca = largura - (espacamento + cpmax * 2)
         if diferenca > 0:

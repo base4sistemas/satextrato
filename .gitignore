@@ -1,5 +1,9 @@
 __pycache__/
 .cache/
+.tox/
+.idea/
+.env/
+.env_satextrato/
 .pytest_cache/
 
 /build/
@@ -10,6 +14,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg
 *.sublime-workspace
 
 # extrato.cfg gerado e editável durante as seções de testes

@@ -16,51 +16,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 import xml.etree.ElementTree as ET
 
 from datetime import datetime
 from decimal import Decimal
 
+import six
+
 from satcomum import br
 from satcomum import ersat
 
-from . import config
 from .base import ExtratoCFe
 
 
 class ExtratoCFeCancelamento(ExtratoCFe):
     """Implementa impressão do extrato do CF-e de cancelamento."""
 
-
-    def __init__(self, fp_venda, fp_cancelamento, impressora):
+    def __init__(self, fp_venda, fp_canc, impressora, config=None):
         """Inicia uma instância de :class:`ExtratoCFeCancelamento`.
 
-        :param fp_venda: Um objeto *file-like* para o documento XML que
-            contém o CF-e de venda cancelado (o documento eletrônico da venda
-            que fora cancelada).
+        :param fp_venda: Um *file object* para o XML do CF-e de venda.
+            Neste caso, o documento XML da venda que foi cancelada.
 
-        :param fp_cancelamento: Um objeto *file-like* para o documento XML que
-            contém o CF-e de cancelamento (o documento eletrônico que autoriza
-            o cancelamento da venda).
+        :param fp_canc: Um *file object* para o XML do CF-e de cancelamento.
 
-        :param impressora: Um objeto :class:`escpos.impl.epson.GenericESCPOS`
-            ou especialização.
+        :param impressora: Um instância (ou subclasse, especialização) de
+            :class:`escpos.impl.epson.GenericESCPOS` usado para efetivamente
+            imprimir o extrato.
+
+        :param config: Opcional.
+            Uma instância de :class:`satextrato.config.Configuracoes`.
+            Se não informado, serão usados valores padrão.
 
         """
         super(ExtratoCFeCancelamento, self).__init__(
-                fp_cancelamento, impressora)
+                fp_canc,
+                impressora,
+                config=config
+            )
         # (!) `self.root` mantém uma referência para o elemento `CFeCanc`
         self._tree_venda = ET.parse(fp_venda)
-        self.root_venda = self._tree_venda.getroot() # ref. elemento `CFe`
-
+        self.root_venda = self._tree_venda.getroot()  # ref. elemento `CFe`
 
     def corpo(self):
         self.corpo_titulo()
         self.corpo_dados_consumidor()
         self.corpo_total_cupom()
         self.corpo_dados_cfe_cancelado()
-
 
     def corpo_titulo(self):
         self.normal()
@@ -79,10 +84,12 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.condensado()
         self.negrito()
 
-
     def corpo_dados_consumidor(self):
-        documento = self.root.findtext('./infCFe/dest/CNPJ') or \
-                self.root.findtext('./infCFe/dest/CPF') or ''
+        documento = (
+                self.root.findtext('./infCFe/dest/CNPJ')
+                or self.root.findtext('./infCFe/dest/CPF')
+                or ''
+            )
 
         if br.is_cnpjcpf(documento):
             self.normal()
@@ -95,7 +102,6 @@ class ExtratoCFeCancelamento(ExtratoCFe):
             self.normal()
             self.avanco()
 
-
     def corpo_total_cupom(self):
         self.normal()
         self.esquerda()
@@ -104,19 +110,24 @@ class ExtratoCFeCancelamento(ExtratoCFe):
                 Decimal(self.root.findtext('./infCFe/total/vCFe'))))
         self.negrito()
 
-
     def corpo_dados_cfe_cancelado(self):
 
-        infCFe = self.root_venda.find('./infCFe') # (!) infCFe do CF-e de venda
-        sat_numero_serie = 'SAT no. {}'.format(infCFe.findtext('ide/nserieSAT'))
+        infCFe = self.root_venda.find('./infCFe')  # (!) infCFe da venda
+        sat_numero_serie = 'SAT no. {}'.format(
+                infCFe.findtext('ide/nserieSAT')
+            )
 
         datahora = datetime.strptime('{}{}'.format(
                 infCFe.findtext('ide/dEmi'),
                 infCFe.findtext('ide/hEmi')), '%Y%m%d%H%M%S')
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
+        if six.PY2:
+            # Python 2: strftime() resulta em str, que precisará ser passado
+            # como um objeto unicode para unidecode (em self.texto())
+            datahora_emissao = datahora_emissao.decode('utf-8')
 
-        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id']) # CF-e de venda
+        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id'])
 
         self.normal()
         self.centro()
@@ -138,24 +149,30 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(ersat.dados_qrcode(self._tree_venda),
-                qrcode_module_size=config.qrcode.tamanho_modulo,
-                qrcode_ecc_level=config.qrcode.nivel_correcao)
-
-
+        self.impressora.qrcode(
+                ersat.dados_qrcode(self._tree_venda),
+                qrcode_module_size=self._config.qrcode.tamanho_modulo,
+                qrcode_ecc_level=self._config.qrcode.nivel_correcao
+            )
 
     def rodape(self):
 
-        infCFe = self.root.find('./infCFe') # (!) infCFe do CF-e de cancelamento
-        sat_numero_serie = 'SAT no. {}'.format(infCFe.findtext('ide/nserieSAT'))
+        infCFe = self.root.find('./infCFe')  # (!) infCFe do cancelamento
+        sat_numero_serie = 'SAT no. {}'.format(
+                infCFe.findtext('ide/nserieSAT')
+            )
 
         datahora = datetime.strptime('{}{}'.format(
                 infCFe.findtext('ide/dEmi'),
                 infCFe.findtext('ide/hEmi')), '%Y%m%d%H%M%S')
 
         datahora_emissao = datahora.strftime('%d/%m/%Y - %H:%M:%S')
+        if six.PY2:
+            # Python 2: strftime() resulta em str, que precisará ser passado
+            # como um objeto unicode para unidecode (em self.texto())
+            datahora_emissao = datahora_emissao.decode('utf-8')
 
-        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id']) # CF-e de cancelamento
+        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id'])
 
         self.normal()
         self.avanco(2)
@@ -180,9 +197,11 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.chave_cfe_code128(chave)
 
         self.avanco(2)
-        self.impressora.qrcode(ersat.dados_qrcode(self._tree),
-                qrcode_module_size=config.qrcode.tamanho_modulo,
-                qrcode_ecc_level=config.qrcode.nivel_correcao)
+        self.impressora.qrcode(
+                ersat.dados_qrcode(self._tree),
+                qrcode_module_size=self._config.qrcode.tamanho_modulo,
+                qrcode_ecc_level=self._config.qrcode.nivel_correcao
+            )
 
         self.avanco()
         self.qrcode_mensagem()

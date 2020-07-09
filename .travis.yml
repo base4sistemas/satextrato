@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 #
-# satextrato/__init__.py
+# .travis.yml
 #
-# Copyright 2015 Base4 Sistemas Ltda ME
+# Copyright 2020 Base4 Sistemas EIRELI
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,16 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import absolute_import
-from __future__ import unicode_literals
 
-import logging
+language: python
+dist: bionic
 
+python:
+  - "2.7"
+  - "3.6"
+  - "3.7"
+  - "3.8"
 
-__version__ = '0.2'
+install:
+  - pip install -r requirements/dev.txt
 
-logging.getLogger('satextrato').addHandler(logging.NullHandler())
-
-
-from .venda import ExtratoCFeVenda  # noqa: E402, F401
-from .cancelamento import ExtratoCFeCancelamento  # noqa: E402, F401
+script:
+  - pytest
