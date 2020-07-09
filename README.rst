@@ -47,13 +47,6 @@ Para autorizar e transmitir documentos eletrônicos através da tecnologia
 olhada no `Projeto SATCFe`_. **Este projeto lida apenas com a impressão do
 extrato de documentos CF-e.**
 
-.. warning::
-
-    A **Base4 Sistemas** e os desenvolvedores envolvidos neste projeto, NÃO
-    ASSUMEM NEM TEM QUALQUER RESPONSABILIDADE sobre os "Extratos do CF-e-SAT"
-    gerados por esta biblioteca de código, nem diretamente nem através de uma
-    APLICAÇÃO USUÁRIA. Use por sua própria conta e risco.
-
 
 Exemplos de Uso
 ===============
@@ -119,6 +112,7 @@ Primeiro, configure seu ambiente de desenvolvimento:
     python -m venv .env
     source .env/bin/activate
     pip install -r requirements/dev.txt
+    tox
 
 
 Executando Testes
@@ -151,9 +145,20 @@ Ou via ``tox``, em uma impressora com interface ETH (*ethernet*):
 
 Note que executar os testes de ambientes relacionados à interfaces de conexão
 específicos (eg. ``py37-serial``), só faz sentido se você especificar também
-as configurações da interface via ``--escpos-if-settings`` que irá configurar a
+as configurações da interface via ``--escpos-if-*`` que irá configurar a
 interface onde provavelmente terá uma impressora real conectada ou, no mínimo,
 um emulador ou um `null modem <https://en.wikipedia.org/wiki/Null_modem#Virtual_null_modem>`_.
+
+
+Isenção de Responsabilidade
+===========================
+
+Por favor, **leia atentamente**:
+
+    A **Base4 Sistemas** e os desenvolvedores envolvidos neste projeto, NÃO
+    ASSUMEM NEM TEM QUALQUER RESPONSABILIDADE sobre os "Extratos do CF-e-SAT"
+    gerados por esta biblioteca de código, seja diretamente ou através de uma
+    APLICAÇÃO USUÁRIA. **Use por sua própria conta e risco.**
 
 ..
     Sphinx Documentation: Substitutions at
