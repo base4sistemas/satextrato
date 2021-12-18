@@ -518,7 +518,6 @@ class ExtratoCFeVenda(ExtratoCFe):
                 self.condensado()
 
     def rodape(self):
-
         infCFe = self.root.find('./infCFe')
         sat_numero_serie = 'SAT no. {}'.format(
                 infCFe.findtext('ide/nserieSAT')
@@ -534,8 +533,6 @@ class ExtratoCFeVenda(ExtratoCFe):
             # como um objeto unicode para unidecode (em self.texto())
             datahora_emissao = datahora_emissao.decode('utf-8')
 
-        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id'])
-
         self.normal()
         self.separador()
         self.centro()
@@ -543,22 +540,16 @@ class ExtratoCFeVenda(ExtratoCFe):
         self.texto(sat_numero_serie)
         self.negrito()
         self.texto(datahora_emissao)
-
-        self.avanco()
-        self.condensado()
-        self.texto(' '.join(chave.partes()))
-        self.condensado()
-
         self.avanco()
 
-        self.chave_cfe_code128(chave)
+        self.chave_cfe_code128(ersat.ChaveCFeSAT(infCFe.attrib['Id']))
+        self.avanco()
 
-        self.avanco(2)
+        self.centro()
         self.impressora.qrcode(
                 ersat.dados_qrcode(self._tree),
                 qrcode_module_size=self._config.qrcode.tamanho_modulo,
                 qrcode_ecc_level=self._config.qrcode.nivel_correcao
             )
 
-        self.avanco()
         self.qrcode_mensagem()

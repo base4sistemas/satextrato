@@ -21,13 +21,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import io
-import os
 
 import pytest
 
 from satextrato.config import code128_quebrar_partes
-from satextrato.config import io_open
-from satextrato.config import padrao
+from satextrato.config import fopen
 
 
 def test_code128_quebrar_partes_listas_ok():
@@ -77,15 +75,15 @@ def test_code128_quebrar_partes_lista_nao_soma_44():
         code128_quebrar_partes('2, 40')
 
 
-def test_io_open(tmp_path):
+def test_fopen(tmp_path):
     """
-    O *contextmanager* ``io_open`` deve retornar um *file-like* tanto para
+    O *contextmanager* ``fopen`` deve retornar um *file-like* tanto para
     um nome de arquivo quanto para um *file-like*.
     """
     file_like = io.StringIO()
-    with io_open(file_like) as f:
+    with fopen(file_like) as f:
         assert f is file_like
 
     filename = str(tmp_path / 'test.txt')
-    with io_open(filename, 'w', encoding='utf-8') as f:
+    with fopen(filename, 'w', encoding='utf-8') as f:
         assert f != filename

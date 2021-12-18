@@ -132,7 +132,8 @@ porta serial ``COM1``:
     pytest \
         --escpos-impl=escpos.impl.daruma.DR700 \
         --escpos-if=serial \
-        --escpos-if-settings=COM1:9600,8,1,N,RTSCTS
+        --escpos-if-settings=COM1:9600,8,1,N,RTSCTS \
+        --config-file=/home/user/satextrato.ini
 
 Ou via ``tox``, em uma impressora com interface ETH (*ethernet*):
 
@@ -141,7 +142,8 @@ Ou via ``tox``, em uma impressora com interface ETH (*ethernet*):
     tox -e py37 -- \
         --escpos-impl=escpos.impl.epson.TMT20 \
         --escpos-if=network \
-        --escpos-if-settings=192.168.1.200:9100
+        --escpos-if-settings=192.168.1.200:9100 \
+        --config-file=/home/user/satextrato.ini
 
 Note que executar os testes de ambientes relacionados à interfaces de conexão
 específicos (eg. ``py37-serial``), só faz sentido se você especificar também

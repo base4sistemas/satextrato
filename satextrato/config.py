@@ -127,6 +127,7 @@ Code128 = namedtuple('Code128', [
         'quebrar_partes',  # tuple(int, ...)
         'truncar',  # bool
         'truncar_tamanho',  # int
+        'pular_linha_entre_partes',  # bool
     ])
 
 QRCode = namedtuple('QRCode', [
@@ -275,7 +276,11 @@ def carregar(
             quebrar=parser.getboolean(secao_code128, 'quebrar'),
             quebrar_partes=parser.get(secao_code128, 'quebrar_partes'),
             truncar=parser.getboolean(secao_code128, 'truncar'),
-            truncar_tamanho=parser.getint(secao_code128, 'truncar_tamanho')
+            truncar_tamanho=parser.getint(secao_code128, 'truncar_tamanho'),
+            pular_linha_entre_partes=parser.getboolean(
+                    secao_code128,
+                    'pular_linha_entre_partes'
+                )
         )
 
     secao_qrcode = secao_qrcode or getenv(
@@ -393,6 +398,7 @@ def salvar(
     sec.setvalue('quebrar_partes', partes)
     sec.setboolean('truncar')
     sec.setint('truncar_tamanho')
+    sec.setboolean('pular_linha_entre_partes')
 
     secao_qrcode = secao_qrcode or getenv(
             SATEXTRATO_SECAO_QRCODE,
@@ -444,7 +450,8 @@ def padrao():
             quebrar=True,
             quebrar_partes=(22, 22),
             truncar=False,
-            truncar_tamanho=44
+            truncar_tamanho=_TAMANHO_CHAVE_CFESAT,
+            pular_linha_entre_partes=False,
         )
 
     qrcode = QRCode(
@@ -545,12 +552,11 @@ def code128_quebrar_partes(partes):
 class _SectionHelper(object):
 
     def __init__(self, section_name, parser, obj):
-        if six.PY2:
-            self._unidecode_values = getenv(
-                    SATEXTRATO_UNIDECODE_VALUES_ON_PY2,
-                    cast=bool,
-                    default=True
-                )
+        self._unidecode_values = six.PY2 and getenv(
+                SATEXTRATO_UNIDECODE_VALUES_ON_PY2,
+                cast=bool,
+                default=True
+            )
         self._section_name = section_name
         self._parser = parser
         self._obj = obj

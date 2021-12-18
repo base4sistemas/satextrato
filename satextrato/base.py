@@ -248,6 +248,11 @@ class ExtratoCFe(object):
 
         :param chave: Instância de :class:`satcomum.ersat.ChaveCFeSAT`.
         """
+        self.centro()
+        self.condensado()
+        self.texto(' '.join(chave.partes()))
+        self.condensado()
+
         if self._config.code128.ignorar:
             return
 
@@ -260,16 +265,20 @@ class ExtratoCFe(object):
         if self._config.code128.truncar:
             tamanho = self._config.code128.truncar_tamanho
             digitos = ''.join(chave.partes())[:tamanho]
+            self.centro()
             self.impressora.code128(digitos, **code128_params)
 
         elif self._config.code128.quebrar:
             partes = _quebrar_chave(chave, self._config.code128.quebrar_partes)
             for n_parte, parte in enumerate(partes, 1):
+                self.centro()
                 self.impressora.code128(parte, **code128_params)
-                if n_parte < len(partes):
-                    self.avanco()
+                if self._config.code128.pular_linha_entre_partes:
+                    if n_parte < len(partes):
+                        self.avanco()
         else:
             partes = chave.partes(1)
+            self.centro()
             self.impressora.code128(partes[0], **code128_params)
 
     def qrcode_mensagem(self):

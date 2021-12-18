@@ -74,6 +74,18 @@ def pytest_addoption(parser):
             help='Como lidar com erros de codificação de caracteres'
         )
 
+    parser.addoption(
+            '--config-file',
+            action='store',
+            metavar='FILENAME',
+            default='',
+            help=(
+                    'Caminho completo para o arquivo de configurações. '
+                    'Se não for especificado, serão usadas as '
+                    'configurações padrão'
+                )
+        )
+
 
 class InterfaceFactory(object):
 
@@ -128,7 +140,11 @@ def datadir(tmpdir, request):
 @pytest.fixture(scope='session')
 def configuracao(request):
     from satextrato import config
-    conf = config.padrao()
+    arquivo = request.config.getoption('--config-file')
+    if not arquivo:
+        conf = config.padrao()
+    else:
+        conf = config.carregar(arquivo=arquivo)
     return conf
 
 

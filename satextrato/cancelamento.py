@@ -72,15 +72,15 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         self.centro()
         self.negrito()
         self.texto('Extrato No. {}'.format(self.numero_extrato()))
-        self.texto(u'CUPOM FISCAL ELETRÔNICO - SAT')
-        self.texto(u'CANCELAMENTO')
+        self.texto('CUPOM FISCAL ELETRÔNICO - SAT')
+        self.texto('CANCELAMENTO')
         self.indicacao_de_teste()
         self.negrito()
         self.esquerda()
         self.separador()
         self.negrito()
         self.condensado()
-        self.texto(u'DADOS DO CUPOM FISCAL ELETRÔNICO CANCELADO')
+        self.texto('DADOS DO CUPOM FISCAL ELETRÔNICO CANCELADO')
         self.condensado()
         self.negrito()
 
@@ -127,28 +127,19 @@ class ExtratoCFeCancelamento(ExtratoCFe):
             # como um objeto unicode para unidecode (em self.texto())
             datahora_emissao = datahora_emissao.decode('utf-8')
 
-        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id'])
-
         self.normal()
+        self.separador()
         self.centro()
-        self.avanco()
         self.negrito()
         self.texto(sat_numero_serie)
         self.negrito()
         self.texto(datahora_emissao)
-
         self.avanco()
-        self.esquerda()
-        self.condensado()
-        self.texto(' '.join(chave.partes()))
-        self.condensado()
 
+        self.chave_cfe_code128(ersat.ChaveCFeSAT(infCFe.attrib['Id']))
         self.avanco()
+
         self.centro()
-
-        self.chave_cfe_code128(chave)
-
-        self.avanco(2)
         self.impressora.qrcode(
                 ersat.dados_qrcode(self._tree_venda),
                 qrcode_module_size=self._config.qrcode.tamanho_modulo,
@@ -156,7 +147,6 @@ class ExtratoCFeCancelamento(ExtratoCFe):
             )
 
     def rodape(self):
-
         infCFe = self.root.find('./infCFe')  # (!) infCFe do cancelamento
         sat_numero_serie = 'SAT no. {}'.format(
                 infCFe.findtext('ide/nserieSAT')
@@ -172,36 +162,24 @@ class ExtratoCFeCancelamento(ExtratoCFe):
             # como um objeto unicode para unidecode (em self.texto())
             datahora_emissao = datahora_emissao.decode('utf-8')
 
-        chave = ersat.ChaveCFeSAT(infCFe.attrib['Id'])
-
         self.normal()
-        self.avanco(2)
         self.separador()
         self.centro()
         self.negrito()
-        self.quebrar(u'DADOS DO CUPOM FISCAL ELETRÔNICO DE CANCELAMENTO')
-        self.avanco()
+        self.quebrar('DADOS DO CUPOM FISCAL ELETRÔNICO DE CANCELAMENTO')
         self.texto(sat_numero_serie)
         self.negrito()
         self.texto(datahora_emissao)
-
         self.avanco()
-        self.esquerda()
-        self.condensado()
-        self.texto(' '.join(chave.partes()))
-        self.condensado()
 
+        self.chave_cfe_code128(ersat.ChaveCFeSAT(infCFe.attrib['Id']))
         self.avanco()
+
         self.centro()
-
-        self.chave_cfe_code128(chave)
-
-        self.avanco(2)
         self.impressora.qrcode(
                 ersat.dados_qrcode(self._tree),
                 qrcode_module_size=self._config.qrcode.tamanho_modulo,
                 qrcode_ecc_level=self._config.qrcode.nivel_correcao
             )
 
-        self.avanco()
         self.qrcode_mensagem()
