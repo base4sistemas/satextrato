@@ -54,11 +54,11 @@ setup(
                 'satextrato',
             ],
         install_requires=[
-                'PyESCPOS>=0.3',
+                'PyESCPOS>=0.4',
                 'future',
                 'python-decouple',
                 'six',
-                'satcomum',
+                'satcomum>=2.2',
                 'unidecode',
             ],
         include_package_data=True,
