@@ -58,8 +58,8 @@ impressora que seja suportada pelo projeto `PyESCPOS`_:
 
 .. sourcecode:: python
 
-    from escpos import SerialConnection
-    from escpos.impl.epson import TMT20
+    from pyescpos import SerialConnection
+    from pyescpos.impl.epson import TMT20
     from satextrato import ExtratoCFeVenda
 
     conn = SerialConnection.create('COM1:9600,8,1,N')
@@ -128,9 +128,9 @@ para imprimir em uma Bematech MP-2800 TH conectada à porta serial ``COM1``:
 .. sourcecode:: shell-session
 
     pytest \
-        --escpos-impl=escpos.impl.bematech.MP2800TH \
-        --escpos-if=serial \
-        --escpos-if-settings=COM1:9600,8,1,N,RTSCTS \
+        --pyescpos-impl=pyescpos.impl.bematech.MP2800TH \
+        --pyescpos-if=serial \
+        --pyescpos-if-settings=COM1:9600,8,1,N,RTSCTS \
         --config-file=/home/user/satextrato.ini
 
 Ou via ``tox``, em uma impressora com interface ETH (*ethernet*):
@@ -138,14 +138,14 @@ Ou via ``tox``, em uma impressora com interface ETH (*ethernet*):
 .. sourcecode:: shell-session
 
     tox -e py39 -- \
-        --escpos-impl=escpos.impl.controlid.PrintIdTouch \
-        --escpos-if=network \
-        --escpos-if-settings=192.168.1.200:9100 \
+        --pyescpos-impl=pyescpos.impl.controlid.PrintIdTouch \
+        --pyescpos-if=network \
+        --pyescpos-if-settings=192.168.1.200:9100 \
         --config-file=/home/user/satextrato.ini
 
 Note que executar os testes de ambientes relacionados à interfaces de conexão
 específicos (eg. ``py39-serial``), só faz sentido se você especificar também
-as configurações da interface via ``--escpos-if-*`` que irá configurar a
+as configurações da interface via ``--pyescpos-if-*`` que irá configurar a
 interface onde provavelmente terá uma impressora real conectada ou, no mínimo,
 um emulador ou um `null modem <https://en.wikipedia.org/wiki/Null_modem#Virtual_null_modem>`_.
 

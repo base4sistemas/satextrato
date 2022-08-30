@@ -27,8 +27,8 @@ from six.moves import range
 
 from unidecode import unidecode
 
-import escpos.barcode
-import escpos.feature
+import pyescpos.barcode
+import pyescpos.feature
 
 from satcomum import br
 from satcomum import constantes
@@ -52,7 +52,7 @@ class ExtratoCFe(object):
         :param fp: Um *file object* para o documento XML que contém o CF-e.
 
         :param impressora: Um instância (ou subclasse, especialização) de
-            :class:`escpos.impl.epson.GenericESCPOS` usado para efetivamente
+            :class:`pyescpos.impl.epson.GenericESCPOS` usado para efetivamente
             imprimir o extrato.
 
         :param config: Opcional.
@@ -258,8 +258,8 @@ class ExtratoCFe(object):
 
         code128_params = dict(
                 barcode_height=self._config.code128.altura,
-                barcode_width=escpos.barcode.BARCODE_NORMAL_WIDTH,
-                barcode_hri=escpos.barcode.BARCODE_HRI_NONE
+                barcode_width=pyescpos.barcode.BARCODE_NORMAL_WIDTH,
+                barcode_hri=pyescpos.barcode.BARCODE_HRI_NONE
             )
 
         if self._config.code128.truncar:

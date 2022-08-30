@@ -428,7 +428,7 @@ def padrao():
     :rtype: satextrato.config.Configuracoes
 
     """
-    from escpos import barcode
+    from pyescpos import barcode
 
     cupom = Cupom(
             itens_modo_condensado=True,

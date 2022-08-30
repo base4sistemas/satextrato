@@ -44,7 +44,7 @@ class ExtratoCFeCancelamento(ExtratoCFe):
         :param fp_canc: Um *file object* para o XML do CF-e de cancelamento.
 
         :param impressora: Um instância (ou subclasse, especialização) de
-            :class:`escpos.impl.epson.GenericESCPOS` usado para efetivamente
+            :class:`pyescpos.impl.epson.GenericESCPOS` usado para efetivamente
             imprimir o extrato.
 
         :param config: Opcional.

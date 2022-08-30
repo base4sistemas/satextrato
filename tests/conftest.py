@@ -28,22 +28,22 @@ from builtins import str as text
 
 import pytest
 
-from escpos import constants as escpos_const
-from escpos.conn import CONNECTION_TYPES
+from pyescpos import constants as escpos_const
+from pyescpos.conn import CONNECTION_TYPES
 
 
 def pytest_addoption(parser):
 
     parser.addoption(
-            '--escpos-impl',
+            '--pyescpos-impl',
             action='store',
             metavar='CLASSNAME',
-            default='escpos.impl.epson.GenericESCPOS',
+            default='pyescpos.impl.epson.GenericESCPOS',
             help='Implementacao ESC/POS a ser instanciada'
         )
 
     parser.addoption(
-            '--escpos-if',
+            '--pyescpos-if',
             action='store',
             default='dummy',
             choices=[alias for alias, type_info in CONNECTION_TYPES],
@@ -51,7 +51,7 @@ def pytest_addoption(parser):
         )
 
     parser.addoption(
-            '--escpos-if-settings',
+            '--pyescpos-if-settings',
             action='store',
             metavar='SETTINGS',
             default='',
@@ -59,7 +59,7 @@ def pytest_addoption(parser):
         )
 
     parser.addoption(
-            '--escpos-encoding',
+            '--pyescpos-encoding',
             action='store',
             metavar='ENCODING',
             default=escpos_const.DEFAULT_ENCODING,
@@ -67,7 +67,7 @@ def pytest_addoption(parser):
         )
 
     parser.addoption(
-            '--escpos-encoding-errors',
+            '--pyescpos-encoding-errors',
             action='store',
             metavar='ERRORS',
             default=escpos_const.DEFAULT_ENCODING_ERRORS,
@@ -93,38 +93,38 @@ class InterfaceFactory(object):
         self._request = request
 
     def get_connection_interface(self):
-        interface = self._request.config.getoption('--escpos-if')
-        settings = self._request.config.getoption('--escpos-if-settings')
+        interface = self._request.config.getoption('--pyescpos-if')
+        settings = self._request.config.getoption('--pyescpos-if-settings')
         method = 'create_{}_connection'.format(interface)
         return getattr(self, method)(settings)
 
     def create_bluetooth_connection(self, settings):
-        from escpos import BluetoothConnection
+        from pyescpos import BluetoothConnection
         conn = BluetoothConnection.create(settings)
         return conn
 
     def create_dummy_connection(self, settings):
-        from escpos import DummyConnection
+        from pyescpos import DummyConnection
         conn = DummyConnection.create(settings)
         return conn
 
     def create_file_connection(self, settings):
-        from escpos import FileConnection
+        from pyescpos import FileConnection
         conn = FileConnection.create(settings)
         return conn
 
     def create_network_connection(self, settings):
-        from escpos import NetworkConnection
+        from pyescpos import NetworkConnection
         conn = NetworkConnection.create(settings)
         return conn
 
     def create_serial_connection(self, settings):
-        from escpos import SerialConnection
+        from pyescpos import SerialConnection
         conn = SerialConnection.create(settings)
         return conn
 
     def create_usb_connection(self, settings):
-        from escpos import USBConnection
+        from pyescpos import USBConnection
         conn = USBConnection.create(settings)
         return conn
 
@@ -150,12 +150,12 @@ def configuracao(request):
 
 @pytest.fixture(scope='session')
 def escpos_impl(request):
-    names = request.config.getoption('--escpos-impl').split('.')
+    names = request.config.getoption('--pyescpos-impl').split('.')
     _module = importlib.import_module('.'.join(names[:-1]))
     printer = getattr(_module, names[-1])
 
-    encoding = request.config.getoption('--escpos-encoding')
-    encoding_errors = request.config.getoption('--escpos-encoding-errors')
+    encoding = request.config.getoption('--pyescpos-encoding')
+    encoding_errors = request.config.getoption('--pyescpos-encoding-errors')
 
     factory = InterfaceFactory(request)
     device = factory.get_connection_interface()
