@@ -46,7 +46,7 @@ class ExtratoCFeVenda(ExtratoCFe):
         :param fp: Um *file object* para o XML do CF-e de venda.
 
         :param impressora: Um instância (ou subclasse, especialização) de
-            :class:`escpos.impl.epson.GenericESCPOS` usado para efetivamente
+            :class:`pyescpos.impl.epson.GenericESCPOS` usado para efetivamente
             imprimir o extrato.
 
         :param bool resumido: Opcional. Indica se deverá ser impressa a
