@@ -30,6 +30,7 @@ Projeto SATExtrato
     including variables, methods and class names, as well as documentation,
     are written in brazilian portuguese.
 
+**A SEFAZ/SP decidiu por descontinuar o projeto SAT-CF-e.** Para detalhes acesse a `Portaria SRE nº 79 <https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-79-de-2024.aspx>`_.
 
 Este projeto realiza a impressão dos **Extratos do CF-e-SAT** em impressoras
 ESC/POS |reg| e são normalmente impressos em mini-impressoras de cupons,
